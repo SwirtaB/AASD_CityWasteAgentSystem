@@ -21,7 +21,7 @@ object WasteSource {
   def apply(location: (Int, Int), orchestrator: ActorRef): Behavior[SourceCommands] = source(0, location, 0, orchestrator, 1)
 
 
-  def source(garbage: Int, location: (Int, Int), score: Int, orchestrator: ActorRef, sourceId: Int): Behavior[SourceCommands] =
+  private def source(garbage: Int, location: (Int, Int), score: Int, orchestrator: ActorRef, sourceId: Int): Behavior[SourceCommands] =
     Behaviors.receive {
       (context, message) => {
         message match {
