@@ -11,6 +11,6 @@ object AkkaQuickstart extends App {
   val sampleSource: ActorSystem[WasteSource.SourceCommands] = ActorSystem(WasteSource((1,1), null), "AkkaQuickStart")
 
   implicit val ec = sampleSource.executionContext
-  sampleSource.scheduler.scheduleAtFixedRate(FiniteDuration(1, SECONDS), FiniteDuration(5, SECONDS))(() => sampleSource ! ProduceGarbage(random.nextInt()))
-  sampleSource ! ProduceGarbage(12)
+  sampleSource.scheduler.scheduleAtFixedRate(FiniteDuration(1, SECONDS),
+    FiniteDuration(5, SECONDS))(() => sampleSource ! ProduceGarbage(Math.abs(random.nextInt() % 10)))
 }

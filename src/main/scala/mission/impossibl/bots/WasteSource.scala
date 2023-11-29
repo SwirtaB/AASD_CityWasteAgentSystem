@@ -24,19 +24,17 @@ object WasteSource {
   def source(garbage: Int, location: (Int, Int), score: Int, orchestrator: ActorRef, sourceId: Int): Behavior[SourceCommands] =
     Behaviors.receive {
       (context, message) => {
-        context.log.info("Message received {}", message)
         message match {
           case GarbageCollectionScore(newScore) =>
             source(garbage, location, score + newScore / 2, orchestrator, sourceId)
           case GetGarbage(maxAmount, garbageCollector) =>
-            context.log.info("Garbage received {}", maxAmount)
             val garbageLeft = if (maxAmount >= garbage) 0 else garbage - maxAmount
             garbageCollector ! SendGarbage(garbage - garbageLeft, sourceId)
             source(garbageLeft, location, score, orchestrator, sourceId)
 
           //simulate garbage production
           case ProduceGarbage(amount) =>
-            context.log.info(s"Garbage collected {}", amount)
+            context.log.info(s"New garbage in town! {}, current amount: {}", amount, garbage + amount)
             source(garbage + amount, location, score, orchestrator, sourceId)
         }
       }
