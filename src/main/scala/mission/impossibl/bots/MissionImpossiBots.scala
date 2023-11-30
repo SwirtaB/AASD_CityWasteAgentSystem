@@ -14,7 +14,8 @@ object CityWasteAgentSystem {
 
   def apply(): Behavior[Jumpstart] =
     Behaviors.setup { context =>
-      val orchestrator = context.spawn(GarbageOrchestrator(), "Orchestrator1")
+      val collector1 = context.spawn(GarbageCollector(), "GarbageCollector1")
+      val orchestrator = context.spawn(GarbageOrchestrator(GarbageOrchestrator.Instance(collector1 :: Nil)), "Orchestrator1")
       val wasteSource1 = context.spawn(WasteSource(WasteSource.Instance(1, (1, 1), 20, orchestrator)), "WasteSource1")
 
       val random = new Random()

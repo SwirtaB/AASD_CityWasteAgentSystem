@@ -11,7 +11,7 @@ object WasteSource {
 
   final case class State(garbage: Int, score: Int)
 
-  sealed trait Command;
+  sealed trait Command
 
   final case class ProduceGarbage(amount: Int) extends Command
 
