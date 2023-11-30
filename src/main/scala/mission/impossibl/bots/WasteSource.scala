@@ -5,8 +5,11 @@ import akka.actor.typed.Behavior
 import akka.actor.typed.scaladsl.Behaviors
 
 object WasteSource {
-  val Capacity = 20
   val DisposalPercentFull = 0.7
+
+  final case class Instance(id: Int, location: (Int, Int), capacity: Int, orchestrator: ActorRef[GarbageOrchestrator.Command])
+
+  final case class State(garbage: Int, score: Int)
 
   sealed trait Command;
 
@@ -14,22 +17,24 @@ object WasteSource {
 
   final case class CheckGarbageLevel() extends Command
 
-  def apply(location: (Int, Int), orchestrator: ActorRef[GarbageOrchestrator.Command]): Behavior[Command] = source(0, location, 0, orchestrator, 1)
+  def apply(instance: Instance): Behavior[Command] = {
+    source(instance, State(0, 0))
+  }
 
-  private def source(garbage: Int, location: (Int, Int), score: Int, orchestrator: ActorRef[GarbageOrchestrator.Command], sourceId: Int): Behavior[Command] =
+  private def source(instance: Instance, state: State): Behavior[Command] =
     Behaviors.receive {
       (context, message) => {
         message match {
           case CheckGarbageLevel() =>
             context.log.info("Checking garbage level")
-            if (garbage > DisposalPercentFull * Capacity) {
-              orchestrator ! GarbageOrchestrator.GarbageCollectionRequest()
+            if (state.garbage > DisposalPercentFull * instance.capacity) {
+              instance.orchestrator ! GarbageOrchestrator.GarbageCollectionRequest()
             }
-            source(garbage, location, score, orchestrator, sourceId)
+            source(instance, state)
           case ProduceGarbage(amount) => // simulate garbage production
-            context.log.info(s"New garbage in town! {}, current amount: {}", amount, garbage + amount)
+            context.log.info(s"New garbage in town! {}, current amount: {}", amount, state.garbage + amount)
             context.self ! CheckGarbageLevel()
-            source(garbage + amount, location, score, orchestrator, sourceId)
+            source(instance, State(state.garbage + amount, state.score))
         }
       }
     }

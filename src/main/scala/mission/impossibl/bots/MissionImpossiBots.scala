@@ -16,7 +16,10 @@ object CityWasteAgentSystem {
     Behaviors.setup { context =>
       val orchestrator = context.spawn(GarbageOrchestrator(), "orchestrator1")
       val random = new Random()
-      val wasteSource: ActorSystem[WasteSource.Command] = ActorSystem(WasteSource((1, 1), orchestrator), "wasteSourceActorSystem")
+      val wasteSource: ActorSystem[WasteSource.Command] = ActorSystem(
+        WasteSource(WasteSource.Instance(1, (1, 1), 20, orchestrator)),
+        "wasteSourceActorSystem"
+      )
 
       implicit val ec: ExecutionContextExecutor = wasteSource.executionContext
       wasteSource.scheduler.scheduleAtFixedRate(FiniteDuration(1, SECONDS),
