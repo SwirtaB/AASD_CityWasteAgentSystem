@@ -1,7 +1,7 @@
 package mission.impossibl.bots
 
-import akka.actor.typed.{ActorRef, Behavior}
 import akka.actor.typed.scaladsl.Behaviors
+import akka.actor.typed.{ActorRef, Behavior}
 
 object WasteSource {
   val DisposalPercentFull = 0.7
