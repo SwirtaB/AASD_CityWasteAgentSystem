@@ -14,16 +14,13 @@ object CityWasteAgentSystem {
 
   def apply(): Behavior[Jumpstart] =
     Behaviors.setup { context =>
-      val orchestrator = context.spawn(GarbageOrchestrator(), "orchestrator1")
-      val random = new Random()
-      val wasteSource: ActorSystem[WasteSource.Command] = ActorSystem(
-        WasteSource(WasteSource.Instance(1, (1, 1), 20, orchestrator)),
-        "wasteSourceActorSystem"
-      )
+      val orchestrator = context.spawn(GarbageOrchestrator(), "Orchestrator1")
+      val wasteSource1 = context.spawn(WasteSource(WasteSource.Instance(1, (1, 1), 20, orchestrator)), "WasteSource1")
 
-      implicit val ec: ExecutionContextExecutor = wasteSource.executionContext
-      wasteSource.scheduler.scheduleAtFixedRate(FiniteDuration(1, SECONDS),
-        FiniteDuration(5, SECONDS))(() => wasteSource ! ProduceGarbage(Math.abs(random.nextInt() % 10)))
+      val random = new Random()
+      implicit val ec = context.system.executionContext
+      context.system.scheduler.scheduleAtFixedRate(FiniteDuration(1, SECONDS),
+        FiniteDuration(5, SECONDS))(() => wasteSource1 ! ProduceGarbage(Math.abs(random.nextInt() % 10)))
       Behaviors.same
     }
 }
