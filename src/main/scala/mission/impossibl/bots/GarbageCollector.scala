@@ -4,10 +4,6 @@ import akka.actor.typed.Behavior
 import akka.actor.typed.scaladsl.Behaviors
 
 object GarbageCollector {
-  sealed trait Command
-
-  final case class GarbageCollectionCallForProposal() extends Command
-
   def apply(): Behavior[Command] = collector()
 
   private def collector(): Behavior[Command] =
@@ -20,4 +16,8 @@ object GarbageCollector {
         }
       }
     }
+
+  sealed trait Command
+
+  final case class GarbageCollectionCallForProposal() extends Command
 }

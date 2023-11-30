@@ -6,12 +6,9 @@ import mission.impossibl.bots.CityWasteAgentSystem.Jumpstart
 import mission.impossibl.bots.WasteSource.ProduceGarbage
 
 import java.util.Random
-import scala.concurrent.ExecutionContextExecutor
 import scala.concurrent.duration.{FiniteDuration, SECONDS}
 
 object CityWasteAgentSystem {
-  final case class Jumpstart()
-
   def apply(): Behavior[Jumpstart] =
     Behaviors.setup { context =>
       val collector1 = context.spawn(GarbageCollector(), "GarbageCollector1")
@@ -24,6 +21,8 @@ object CityWasteAgentSystem {
         FiniteDuration(5, SECONDS))(() => wasteSource1 ! ProduceGarbage(Math.abs(random.nextInt() % 10)))
       Behaviors.same
     }
+
+  final case class Jumpstart()
 }
 
 object MissionImpossiBots extends App {

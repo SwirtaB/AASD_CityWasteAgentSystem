@@ -1,21 +1,10 @@
 package mission.impossibl.bots
 
-import akka.actor.typed.ActorRef
-import akka.actor.typed.Behavior
+import akka.actor.typed.{ActorRef, Behavior}
 import akka.actor.typed.scaladsl.Behaviors
 
 object WasteSource {
   val DisposalPercentFull = 0.7
-
-  final case class Instance(id: Int, location: (Int, Int), capacity: Int, orchestrator: ActorRef[GarbageOrchestrator.Command])
-
-  final case class State(garbage: Int, score: Int)
-
-  sealed trait Command
-
-  final case class ProduceGarbage(amount: Int) extends Command
-
-  final case class CheckGarbageLevel() extends Command
 
   def apply(instance: Instance): Behavior[Command] = {
     source(instance, State(0, 0))
@@ -38,4 +27,14 @@ object WasteSource {
         }
       }
     }
+
+  sealed trait Command
+
+  final case class Instance(id: Int, location: (Int, Int), capacity: Int, orchestrator: ActorRef[GarbageOrchestrator.Command])
+
+  final case class State(garbage: Int, score: Int)
+
+  final case class ProduceGarbage(amount: Int) extends Command
+
+  final case class CheckGarbageLevel() extends Command
 }

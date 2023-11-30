@@ -1,15 +1,9 @@
 package mission.impossibl.bots
 
-import akka.actor.typed.{ActorRef, Behavior}
 import akka.actor.typed.scaladsl.Behaviors
+import akka.actor.typed.{ActorRef, Behavior}
 
 object GarbageOrchestrator {
-  final case class Instance(garbageCollectors: List[ActorRef[GarbageCollector.Command]])
-
-  sealed trait Command
-
-  final case class GarbageCollectionRequest() extends Command
-
   def apply(instance: Instance): Behavior[Command] = orchestrator(instance)
 
   private def orchestrator(instance: Instance): Behavior[Command] =
@@ -25,4 +19,10 @@ object GarbageOrchestrator {
         }
       }
     }
+
+  sealed trait Command
+
+  final case class Instance(garbageCollectors: List[ActorRef[GarbageCollector.Command]])
+
+  final case class GarbageCollectionRequest() extends Command
 }
