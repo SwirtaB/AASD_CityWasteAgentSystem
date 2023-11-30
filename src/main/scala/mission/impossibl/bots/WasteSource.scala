@@ -1,41 +1,40 @@
 package mission.impossibl.bots
 
-import akka.actor.ActorRef
+import akka.actor.typed.ActorRef
 import akka.actor.typed.Behavior
 import akka.actor.typed.scaladsl.Behaviors
 
 object WasteSource {
-  sealed trait SourceCommands;
+  val DisposalPercentFull = 0.7
 
-  final case class GarbageCollectionScore(score: Int) extends SourceCommands
+  final case class Instance(id: Int, location: (Int, Int), capacity: Int, orchestrator: ActorRef[GarbageOrchestrator.Command])
 
-  final case class GetGarbage(maxAmount: Int, garbageCollector: ActorRef) extends SourceCommands
+  final case class State(garbage: Int, score: Int)
 
-  final case class ProduceGarbage(amount: Int) extends SourceCommands
+  sealed trait Command;
 
-  sealed trait SourceResponses
+  final case class ProduceGarbage(amount: Int) extends Command
 
-  final case class SendGarbage(actualAmount: Int, sourceId: Int) extends SourceResponses
+  final case class CheckGarbageLevel() extends Command
 
+  def apply(instance: Instance): Behavior[Command] = {
+    source(instance, State(0, 0))
+  }
 
-  def apply(location: (Int, Int), orchestrator: ActorRef): Behavior[SourceCommands] = source(0, location, 0, orchestrator, 1)
-
-
-  private def source(garbage: Int, location: (Int, Int), score: Int, orchestrator: ActorRef, sourceId: Int): Behavior[SourceCommands] =
+  private def source(instance: Instance, state: State): Behavior[Command] =
     Behaviors.receive {
       (context, message) => {
         message match {
-          case GarbageCollectionScore(newScore) =>
-            source(garbage, location, score + newScore / 2, orchestrator, sourceId)
-          case GetGarbage(maxAmount, garbageCollector) =>
-            val garbageLeft = if (maxAmount >= garbage) 0 else garbage - maxAmount
-            garbageCollector ! SendGarbage(garbage - garbageLeft, sourceId)
-            source(garbageLeft, location, score, orchestrator, sourceId)
-
-          //simulate garbage production
-          case ProduceGarbage(amount) =>
-            context.log.info(s"New garbage in town! {}, current amount: {}", amount, garbage + amount)
-            source(garbage + amount, location, score, orchestrator, sourceId)
+          case CheckGarbageLevel() =>
+            context.log.info("Checking garbage level")
+            if (state.garbage > DisposalPercentFull * instance.capacity) {
+              instance.orchestrator ! GarbageOrchestrator.GarbageCollectionRequest()
+            }
+            source(instance, state)
+          case ProduceGarbage(amount) => // simulate garbage production
+            context.log.info(s"New garbage in town! {}, current amount: {}", amount, state.garbage + amount)
+            context.self ! CheckGarbageLevel()
+            source(instance, State(state.garbage + amount, state.score))
         }
       }
     }
