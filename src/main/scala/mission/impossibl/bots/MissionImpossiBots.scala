@@ -11,9 +11,13 @@ import scala.concurrent.duration.{FiniteDuration, SECONDS}
 object CityWasteAgentSystem {
   def apply(): Behavior[Jumpstart] =
     Behaviors.setup { context =>
-      val collector1 = context.spawn(GarbageCollector(GarbageCollector.Instance(1, 30, null), (5, 5)), "Collector1")
-      val orchestrator1 = context.spawn(GarbageOrchestrator(GarbageOrchestrator.Instance(1, collector1 :: Nil)), "Orchestrator1")
-      val source1 = context.spawn(WasteSource(WasteSource.Instance(1, (1, 1), 20, orchestrator1)), "Source1")
+      val gcFactory = new GarbageCollectorFactory[Jumpstart](context)
+      val goFactory = new GarbageOrchestratorFactory[Jumpstart](context)
+      val wsFactory = new WasteSourceFactory[Jumpstart](context)
+
+      val collector1 = gcFactory.spawn(1, 30, (5, 5))
+      val orchestrator1 = goFactory.spawn(1, collector1 :: Nil)
+      val source1 = wsFactory.spawn(1, (1, 1), 20, orchestrator1)
 
       orchestrator1 ! GarbageOrchestrator.LateInitialize()
 
