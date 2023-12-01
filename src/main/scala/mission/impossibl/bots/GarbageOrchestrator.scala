@@ -12,18 +12,18 @@ object GarbageOrchestrator {
     Behaviors.receive {
       (context, message) => {
         message match {
-          case GarbageCollectionRequest() =>
-            context.log.info("Received request to collect garbage")
+          case GarbageCollectionRequest(sourceId, sourceLocation, _, garbageAmount) =>
+            context.log.info("Orchestrator{} received request to collect garbage from Source{}", instance.id, sourceId)
             for (gc <- instance.garbageCollectors) {
-              gc ! GarbageCollector.GarbageCollectionCallForProposal()
+              gc ! GarbageCollector.GarbageCollectionCallForProposal(sourceId, sourceLocation, garbageAmount)
             }
-            orchestrator(instance)
+            Behaviors.same
           case LateInitialize() =>
             context.log.info("Orchestrator{} late initialize", instance.id)
             for (gc <- instance.garbageCollectors) {
-              gc ! GarbageCollector.AttachOrchestrator(context.self)
+              gc ! GarbageCollector.AttachOrchestrator(instance.id, context.self)
             }
-            orchestrator(instance)
+            Behaviors.same
         }
       }
     }
@@ -32,7 +32,7 @@ object GarbageOrchestrator {
 
   final case class Instance(id: Int, garbageCollectors: List[ActorRef[GarbageCollector.Command]])
 
-  final case class GarbageCollectionRequest() extends Command
+  final case class GarbageCollectionRequest(sourceId: Int, sourceLocation: (Int, Int), sourceRef: ActorRef[WasteSource.Command], garbageAmount: Int) extends Command
 
   final case class LateInitialize() extends Command
 }

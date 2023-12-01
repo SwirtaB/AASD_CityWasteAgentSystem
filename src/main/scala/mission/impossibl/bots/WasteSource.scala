@@ -15,13 +15,18 @@ object WasteSource {
       (context, message) => {
         message match {
           case CheckGarbageLevel() =>
-            context.log.info("Checking garbage level")
+            context.log.info("Source{}: Checking garbage level", instance.id)
             if (state.garbage > DisposalPercentFull * instance.capacity) {
-              instance.orchestrator ! GarbageOrchestrator.GarbageCollectionRequest()
+              instance.orchestrator ! GarbageOrchestrator.GarbageCollectionRequest(
+                instance.id, instance.location, context.self, state.garbage
+              )
             }
-            source(instance, state)
+            Behaviors.same
           case ProduceGarbage(amount) => // simulate garbage production
-            context.log.info(s"New garbage in town! {}, current amount: {}", amount, state.garbage + amount)
+            context.log.info(
+              s"Source{}: New garbage in town! {}, current amount: {}",
+              instance.id, amount, state.garbage + amount
+            )
             context.self ! CheckGarbageLevel()
             source(instance, State(state.garbage + amount, state.score))
         }
