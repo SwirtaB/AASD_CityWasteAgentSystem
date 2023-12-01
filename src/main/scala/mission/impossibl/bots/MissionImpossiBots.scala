@@ -16,15 +16,15 @@ object CityWasteAgentSystem {
       val wsFactory = new WasteSourceFactory[Jumpstart](context)
 
       val collector1 = gcFactory.spawn(1, 30, (5, 5))
-      val orchestrator1 = goFactory.spawn(1, collector1 :: Nil)
+      val orchestrator1 = goFactory.spawn(1)
       val source1 = wsFactory.spawn(1, (1, 1), 20, orchestrator1)
 
-      orchestrator1 ! GarbageOrchestrator.LateInitialize()
+      collector1 ! GarbageCollector.AttachOrchestrator(1, orchestrator1) // TODO: GC should automatically find the closest GO
 
       val random = new Random()
       implicit val ec = context.system.executionContext
       context.system.scheduler.scheduleAtFixedRate(FiniteDuration(1, SECONDS),
-        FiniteDuration(5, SECONDS))(() => source1 ! ProduceGarbage(Math.abs(random.nextInt() % 10)))
+        FiniteDuration(1, SECONDS))(() => source1 ! ProduceGarbage(Math.abs(random.nextInt() % 10)))
       Behaviors.same
     }
 

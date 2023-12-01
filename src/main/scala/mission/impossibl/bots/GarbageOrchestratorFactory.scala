@@ -4,8 +4,8 @@ import akka.actor.typed.ActorRef
 import akka.actor.typed.scaladsl.ActorContext
 
 class GarbageOrchestratorFactory[T](val context: ActorContext[T]) {
-  def spawn(id: Int, garbageCollectors: List[ActorRef[GarbageCollector.Command]]): ActorRef[GarbageOrchestrator.Command] = {
-    val goInstance = GarbageOrchestrator.Instance(id, garbageCollectors)
+  def spawn(id: Int): ActorRef[GarbageOrchestrator.Command] = {
+    val goInstance = GarbageOrchestrator.Instance(id)
     context.spawn(GarbageOrchestrator(goInstance), s"Orchestrator$id")
   }
 }

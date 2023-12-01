@@ -20,6 +20,7 @@ object GarbageCollector {
             Behaviors.same
           case AttachOrchestrator(orchestratorId, orchestratorRef) =>
             context.log.info("Collector{} attached to Orchestrator{}", instance.id, orchestratorId)
+            orchestratorRef ! GarbageOrchestrator.GarbageCollectorRegistered(context.self)
             collector(instance.copy(orchestrator = orchestratorRef), state)
         }
       }
