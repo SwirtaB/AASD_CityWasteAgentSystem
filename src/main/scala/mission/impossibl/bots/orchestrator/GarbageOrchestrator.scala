@@ -28,7 +28,7 @@ object GarbageOrchestrator {
 
           case GarbageCollectionRequest(sourceId, sourceLocation, sourceRef, garbageAmount) =>
             context.log.info("Orchestrator {} received request to collect garbage from Source {}", instance.id, sourceId)
-            val auction = initAuction(GarbageCollectionInfo(sourceId, sourceLocation, garbageAmount, sourceRef), state.garbageCollectors)
+            val auction = initAuction(GarbageCollectionInfo(garbageAmount, sourceLocation, sourceId, sourceRef), state.garbageCollectors)
             orchestrator(instance, state.copy(auctionsInProgress = state.auctionsInProgress.updated(auction.auctionId, auction)))
           case GarbageCollectionProposal(auctionId, auctionOffer) =>
             context.log.info("Received proposal for auction {} from {}", auctionId, auctionOffer.gcRef)
