@@ -23,17 +23,34 @@ object GarbageCollector {
 
           case GarbageCollectionCallForProposal(auctionId, sourceId, sourceLocation, garbageAmount) =>
             context.log.info("Received Garbage Collection CFP for source {} and amount {}", sourceId, garbageAmount)
-            //TODO should update state to "reserve" space for this garbage
-            //TODO add logic for offer creation
-            val auctionOffer = AuctionOffer(context.self)
-            instance.orchestrator ! GarbageCollectionProposal(auctionId, auctionOffer)
-            Behaviors.same
-          case GarbageCollectionAccepted(auctionId, _) =>
+            if (state.carriedGarbage + garbageAmount + state.ongoingAuctions.values.map(_.amount).sum < instance.capacity) {
+              //TODO add logic for offer creation
+              val auctionOffer = AuctionOffer(context.self)
+              instance.orchestrator ! GarbageCollectionProposal(auctionId, auctionOffer)
+              collector(instance, state.copy(ongoingAuctions = state.ongoingAuctions.updated(auctionId, Garbage(sourceLocation, garbageAmount))))
+            } else {
+              Behaviors.same
+            }
+          case GarbageCollectionAccepted(auctionId, sourceRef) =>
             context.log.info("GC Accepted for auction id {}", auctionId)
-            Behaviors.same
+            val garbage = state.ongoingAuctions.get(auctionId)
+            if (garbage.isEmpty) {
+              context.log.info("Won action {} I don't rember of :)", auctionId)
+              return Behaviors.same
+            }
+            val nextNode = GarbagePathElem(garbage.get.location, garbage.get.amount, sourceRef)
+            val updatedPath = state.futureSources.appended(nextNode)
+            val updatedAuctions = state.ongoingAuctions.removed(auctionId)
+            //todo here should start informing the source of delivery
+            collector(instance, state.copy(ongoingAuctions = updatedAuctions, futureSources = updatedPath))
           case GarbageCollectionRejected(auctionId) =>
             context.log.info("GC Rejected for auction id {}", auctionId)
-            Behaviors.same
+            val garbage = state.ongoingAuctions.get(auctionId)
+            if (garbage.isEmpty) {
+              context.log.info("Lost auction {} I don't rember of :)", auctionId)
+              return Behaviors.same
+            }
+            collector(instance, state.copy(ongoingAuctions = state.ongoingAuctions.removed(auctionId)))
         }
       }
     }
@@ -42,13 +59,32 @@ object GarbageCollector {
 
   final case class Instance(id: Int, capacity: Int, orchestrator: ActorRef[GarbageOrchestrator.Command])
 
-  final case class State(currentLocation: (Int, Int))
+  final case class State(
+                          currentLocation: (Int, Int),
+                          visitedSources: List[GarbagePathElem] = List.empty,
+                          futureSources: List[GarbagePathElem] = List.empty,
+                          carriedGarbage: Int = 0,
+                          reservedSpace: Int = 0,
+                          ongoingAuctions: Map[UUID, Garbage] = Map.empty
+                        )
+
+  final case class Garbage(
+                            location: (Int, Int),
+                            amount: Int
+                          )
+
+  final case class GarbagePathElem(
+                                    location: (Int, Int),
+                                    amount: Int,
+                                    ref: ActorRef[WasteSource.Command]
+                                  )
+
 
   final case class GarbageCollectionCallForProposal(auctionId: UUID, sourceId: Int, sourceLocation: (Int, Int), garbageAmount: Int) extends Command
 
   final case class AttachOrchestrator(orchestratorId: Int, orchestratorRef: ActorRef[GarbageOrchestrator.Command]) extends Command
 
-  //todo extend with any other needed info
   final case class GarbageCollectionAccepted(auctionId: UUID, sourceRef: ActorRef[WasteSource.Command]) extends Command
+
   final case class GarbageCollectionRejected(auctionId: UUID) extends Command
 }
