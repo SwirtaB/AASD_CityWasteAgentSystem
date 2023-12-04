@@ -4,9 +4,11 @@ import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorSystem, Behavior}
 import mission.impossibl.bots.CityWasteAgentSystem.Jumpstart
 import mission.impossibl.bots.WasteSource.ProduceGarbage
-import mission.impossibl.bots.WasteSink.{ProcessGarbage, ReceiveGarbage, GarbagePacket, GarbagePacketRecord}
+import mission.impossibl.bots.WasteSink.{GarbagePacket, GarbagePacketRecord, ProcessGarbage, ReceiveGarbage}
+import mission.impossibl.bots.orchestrator.GarbageOrchestratorFactory
 
 import java.util.Random
+import scala.concurrent.ExecutionContextExecutor
 import scala.concurrent.duration.{FiniteDuration, SECONDS}
 
 object CityWasteAgentSystem {
@@ -17,6 +19,7 @@ object CityWasteAgentSystem {
       val wsFactory = new WasteSourceFactory[Jumpstart](context)
 
       val collector1 = gcFactory.spawn(1, 30, (5, 5))
+      val collector2 = gcFactory.spawn(2, 30, (5, 5))
       val orchestrator1 = goFactory.spawn(1)
       val source1 = wsFactory.spawn(1, (1, 1), 20, orchestrator1)
 
@@ -29,9 +32,10 @@ object CityWasteAgentSystem {
       sink_1 ! ProcessGarbage(1)
 
       collector1 ! GarbageCollector.AttachOrchestrator(1, orchestrator1) // TODO: GC should automatically find the closest GO
+      collector2 ! GarbageCollector.AttachOrchestrator(1, orchestrator1)
 
       val random = new Random()
-      implicit val ec = context.system.executionContext
+      implicit val ec: ExecutionContextExecutor = context.system.executionContext
       context.system.scheduler.scheduleAtFixedRate(FiniteDuration(1, SECONDS),
         FiniteDuration(1, SECONDS))(() => source1 ! ProduceGarbage(Math.abs(random.nextInt() % 10)))
       Behaviors.same
