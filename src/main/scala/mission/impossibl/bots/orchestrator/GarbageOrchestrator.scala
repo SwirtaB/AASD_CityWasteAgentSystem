@@ -10,7 +10,7 @@ import scala.concurrent.duration._
 
 object GarbageOrchestrator {
 
-  val AuctionTimeoutVal = 1.seconds
+  private val AuctionTimeoutVal = 1.seconds
 
   def apply(instance: Instance): Behavior[Command] = {
     val initialState = State(List.empty[ActorRef[GarbageCollector.Command]])
@@ -33,7 +33,6 @@ object GarbageOrchestrator {
           case GarbageCollectionProposal(auctionId, auctionOffer) =>
             context.log.info("Received proposal for auction {} from {}", auctionId, auctionOffer.gcRef)
             progressAuction(auctionId, auctionOffer, state, instance)
-
           case AuctionTimeout(auctionId) =>
             context.log.info("Auction timeout {}", auctionId)
             state.auctionsInProgress.get(auctionId) match {
@@ -45,7 +44,6 @@ object GarbageOrchestrator {
         }
       }
     }
-
 
   private def initAuction(gcInfo: GarbageCollectionInfo,
                           gcs: List[ActorRef[GarbageCollector.Command]])
@@ -78,7 +76,7 @@ object GarbageOrchestrator {
     }
 
   private def resolveAuction(auction: Auction)(implicit context: ActorContext[Command]): Unit = {
-    if(auction.received.nonEmpty){
+    if (auction.received.nonEmpty) {
       //todo proper winning offer choice algorithm
       context.log.info("Winning offer for auction {} from {}", auction.auctionId, auction.received.head.gcRef)
       auction.received.head.gcRef ! GarbageCollectionAccepted(auction.auctionId, auction.collectionInfo.sourceRef)
@@ -89,7 +87,7 @@ object GarbageOrchestrator {
 
   sealed trait Command
 
-  final case class AuctionTimeout(auctionId: UUID) extends Command
+  private final case class AuctionTimeout(auctionId: UUID) extends Command
 
   final case class GarbageCollectionRequest(sourceId: Int, sourceLocation: (Int, Int), sourceRef: ActorRef[WasteSource.Command], garbageAmount: Int) extends Command
 
