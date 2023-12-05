@@ -2,6 +2,7 @@ package mission.impossibl.bots
 
 import akka.actor.typed.ActorRef
 import akka.actor.typed.scaladsl.ActorContext
+import mission.impossibl.bots.orchestrator.GarbageOrchestrator
 class WasteSinkFactory[T](val context: ActorContext[T]) {
   def spawn(id: Int,
             location: (Int, Int),
