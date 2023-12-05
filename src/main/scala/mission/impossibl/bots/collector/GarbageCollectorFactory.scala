@@ -1,4 +1,4 @@
-package mission.impossibl.bots
+package mission.impossibl.bots.collector
 
 import akka.actor.typed.ActorRef
 import akka.actor.typed.scaladsl.ActorContext

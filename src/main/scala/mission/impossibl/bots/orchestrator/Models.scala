@@ -2,7 +2,8 @@ package mission.impossibl.bots.orchestrator
 
 import akka.actor.Cancellable
 import akka.actor.typed.ActorRef
-import mission.impossibl.bots.{GarbageCollector, WasteSource}
+import mission.impossibl.bots.collector.GarbageCollector
+import mission.impossibl.bots.source.WasteSource
 
 import java.util.UUID
 
@@ -18,10 +19,10 @@ final case class Auction(
                           expected: Int,
                           received: List[AuctionOffer],
                           timeoutRef: Cancellable,
-                          collectionInfo: GarbageCollectionInfo
+                          collectionInfo: GarbageToCollect
                         )
 
-final case class GarbageCollectionInfo(
+final case class GarbageToCollect(
                                         garbageAmount: Int,
                                         location: (Int, Int),
                                         sourceId: Int,

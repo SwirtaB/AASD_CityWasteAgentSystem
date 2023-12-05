@@ -1,10 +1,8 @@
-package mission.impossibl.bots
+package mission.impossibl.bots.sink
 
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, Behavior}
 import mission.impossibl.bots.orchestrator.GarbageOrchestrator
-
-import java.util.UUID
 
 object WasteSink {
   sealed trait Command
