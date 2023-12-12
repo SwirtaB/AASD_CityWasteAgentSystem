@@ -3,7 +3,7 @@ package mission.impossibl.bots.source
 import akka.actor.Cancellable
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, Behavior}
-import mission.impossibl.bots.collector.GarbageCollector.CollectedGarbage
+import mission.impossibl.bots.collector.GarbageCollector.CollectGarbage
 import mission.impossibl.bots.orchestrator.GarbageOrchestrator
 
 import scala.concurrent.duration._
@@ -44,9 +44,9 @@ object WasteSource {
             context.self ! CheckGarbageLevel()
             source(instance, state.copy(auctionTimeout = None))
 
-          case CollectGarbage(maxAmount, collectorRef) =>
+          case DisposeGarbage(maxAmount, collectorRef) =>
             val garbageToCollect = maxAmount.max(state.garbage)
-            collectorRef ! CollectedGarbage(garbageToCollect)
+            collectorRef ! CollectGarbage(garbageToCollect)
             state.collectionTimeout.map(_.cancel())
             source(instance, state.copy(garbage = state.garbage - garbageToCollect, collectionTimeout = None))
 
@@ -74,7 +74,7 @@ object WasteSource {
 
   final case class GarbageCollectionInfo(collectorId: Int, estimatedArrival: FiniteDuration) extends Command
 
-  final case class CollectGarbage(maxAmount: Int, collectorRef: ActorRef[CollectedGarbage]) extends Command
+  final case class DisposeGarbage(maxAmount: Int, collectorRef: ActorRef[CollectGarbage]) extends Command
 
   private final case class CheckGarbageLevel() extends Command
 

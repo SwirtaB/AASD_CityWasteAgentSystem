@@ -59,7 +59,7 @@ object GarbageCollector {
             }
             collector(instance, state.copy(ongoingAuctions = state.ongoingAuctions.removed(auctionId)))
 
-          case CollectedGarbage(amount) =>
+          case CollectGarbage(amount) =>
             val updatedGarbageState = state.carriedGarbage + amount
             if (updatedGarbageState >= 0.95 * instance.capacity){
               //init disposal auction
@@ -103,5 +103,5 @@ object GarbageCollector {
 
   final case class GarbageCollectionRejected(auctionId: UUID) extends Command
 
-  final case class CollectedGarbage(amount: Int) extends Command
+  final case class CollectGarbage(amount: Int) extends Command
 }
