@@ -2,8 +2,9 @@ package mission.impossibl.bots.orchestrator
 
 import akka.actor.typed.scaladsl.{ActorContext, Behaviors}
 import akka.actor.typed.{ActorRef, Behavior}
-import mission.impossibl.bots.GarbageCollector.{GarbageCollectionAccepted, GarbageCollectionRejected}
-import mission.impossibl.bots.{GarbageCollector, WasteSource}
+import mission.impossibl.bots.collector.GarbageCollector.{GarbageCollectionAccepted, GarbageCollectionRejected}
+import mission.impossibl.bots.collector.GarbageCollector
+import mission.impossibl.bots.source.WasteSource
 
 import java.util.UUID
 import scala.concurrent.duration._
@@ -28,7 +29,7 @@ object GarbageOrchestrator {
 
           case GarbageCollectionRequest(sourceId, sourceLocation, sourceRef, garbageAmount) =>
             context.log.info("Orchestrator {} received request to collect garbage from Source {}", instance.id, sourceId)
-            val auction = initAuction(GarbageCollectionInfo(garbageAmount, sourceLocation, sourceId, sourceRef), state.garbageCollectors)
+            val auction = initAuction(GarbageToCollect(garbageAmount, sourceLocation, sourceId, sourceRef), state.garbageCollectors)
             orchestrator(instance, state.copy(auctionsInProgress = state.auctionsInProgress.updated(auction.auctionId, auction)))
           case GarbageCollectionProposal(auctionId, auctionOffer) =>
             context.log.info("Received proposal for auction {} from {}", auctionId, auctionOffer.gcRef)
@@ -45,7 +46,7 @@ object GarbageOrchestrator {
       }
     }
 
-  private def initAuction(gcInfo: GarbageCollectionInfo,
+  private def initAuction(gcInfo: GarbageToCollect,
                           gcs: List[ActorRef[GarbageCollector.Command]])
                          (implicit context: ActorContext[Command]): Auction = {
     val auctionId = UUID.randomUUID()
