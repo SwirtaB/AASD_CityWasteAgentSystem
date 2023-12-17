@@ -70,28 +70,6 @@ object GarbageCollector {
 
   sealed trait Command
 
-  final case class Instance(id: Int, capacity: Int, orchestrator: ActorRef[GarbageOrchestrator.Command])
-
-  final case class State(
-                          currentLocation: (Int, Int),
-                          visitedSources: List[GarbagePathElem] = List.empty,
-                          futureSources: List[GarbagePathElem] = List.empty,
-                          carriedGarbage: Int = 0,
-                          reservedSpace: Int = 0,
-                          ongoingAuctions: Map[UUID, Garbage] = Map.empty
-                        )
-
-  final case class Garbage(
-                            location: (Int, Int),
-                            amount: Int
-                          )
-
-  final case class GarbagePathElem(
-                                    location: (Int, Int),
-                                    amount: Int,
-                                    ref: ActorRef[WasteSource.Command]
-                                  )
-
 
   final case class GarbageCollectionCallForProposal(auctionId: UUID, sourceId: Int, sourceLocation: (Int, Int), garbageAmount: Int) extends Command
 
