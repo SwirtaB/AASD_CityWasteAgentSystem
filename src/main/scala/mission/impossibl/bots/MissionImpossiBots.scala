@@ -7,12 +7,8 @@ import mission.impossibl.bots.collector.{GarbageCollector, GarbageCollectorFacto
 import mission.impossibl.bots.orchestrator.GarbageOrchestratorFactory
 import mission.impossibl.bots.sink.WasteSink.{GarbagePacket, GarbagePacketRecord, ProcessGarbage, ReceiveGarbage}
 import mission.impossibl.bots.sink.WasteSinkFactory
-import mission.impossibl.bots.source.WasteSource.ProduceGarbage
 import mission.impossibl.bots.source.WasteSourceFactory
 
-import java.util.Random
-import scala.concurrent.ExecutionContextExecutor
-import scala.concurrent.duration.{FiniteDuration, SECONDS}
 
 object CityWasteAgentSystem {
   def apply(): Behavior[Jumpstart] =
@@ -37,10 +33,6 @@ object CityWasteAgentSystem {
       collector1 ! GarbageCollector.AttachOrchestrator(1, orchestrator1) // TODO: GC should automatically find the closest GO
       collector2 ! GarbageCollector.AttachOrchestrator(1, orchestrator1)
 
-      val random = new Random()
-      implicit val ec: ExecutionContextExecutor = context.system.executionContext
-      context.system.scheduler.scheduleAtFixedRate(FiniteDuration(1, SECONDS),
-        FiniteDuration(1, SECONDS))(() => source1 ! ProduceGarbage(Math.abs(random.nextInt() % 10)))
       Behaviors.same
     }
 
