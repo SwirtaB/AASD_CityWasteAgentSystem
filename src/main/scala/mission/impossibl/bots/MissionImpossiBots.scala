@@ -7,24 +7,20 @@ import mission.impossibl.bots.collector.{GarbageCollector, GarbageCollectorFacto
 import mission.impossibl.bots.orchestrator.GarbageOrchestratorFactory
 import mission.impossibl.bots.sink.WasteSink.{GarbagePacket, GarbagePacketRecord, ProcessGarbage, ReceiveGarbage}
 import mission.impossibl.bots.sink.WasteSinkFactory
-import mission.impossibl.bots.source.WasteSource.ProduceGarbage
 import mission.impossibl.bots.source.WasteSourceFactory
 
-import java.util.Random
-import scala.concurrent.ExecutionContextExecutor
-import scala.concurrent.duration.{FiniteDuration, SECONDS}
 
 object CityWasteAgentSystem {
   def apply(): Behavior[Jumpstart] =
     Behaviors.setup { context =>
-      val gcFactory = new GarbageCollectorFactory[Jumpstart](context)
-      val goFactory = new GarbageOrchestratorFactory[Jumpstart](context)
-      val wsFactory = new WasteSourceFactory[Jumpstart](context)
+      val garbageCollectorFactory = new GarbageCollectorFactory[Jumpstart](context)
+      val garbageOrchestratorFactory = new GarbageOrchestratorFactory[Jumpstart](context)
+      val wasteSourceFactory = new WasteSourceFactory[Jumpstart](context)
 
-      val collector1 = gcFactory.spawn(1, 30, (5, 5))
-      val collector2 = gcFactory.spawn(2, 30, (5, 5))
-      val orchestrator1 = goFactory.spawn(1)
-      val source1 = wsFactory.spawn(1, (1, 1), 20, orchestrator1)
+      val collector1 = garbageCollectorFactory.spawn(1, 30, (5, 5))
+      val collector2 = garbageCollectorFactory.spawn(2, 30, (5, 5))
+      val orchestrator1 = garbageOrchestratorFactory.spawn(1)
+      val source1 = wasteSourceFactory.spawn(1, (1, 1), 20, orchestrator1)
 
       // Sink test
       val wasteSinkFactory = new WasteSinkFactory[Jumpstart](context)
@@ -37,10 +33,6 @@ object CityWasteAgentSystem {
       collector1 ! GarbageCollector.AttachOrchestrator(1, orchestrator1) // TODO: GC should automatically find the closest GO
       collector2 ! GarbageCollector.AttachOrchestrator(1, orchestrator1)
 
-      val random = new Random()
-      implicit val ec: ExecutionContextExecutor = context.system.executionContext
-      context.system.scheduler.scheduleAtFixedRate(FiniteDuration(1, SECONDS),
-        FiniteDuration(1, SECONDS))(() => source1 ! ProduceGarbage(Math.abs(random.nextInt() % 10)))
       Behaviors.same
     }
 

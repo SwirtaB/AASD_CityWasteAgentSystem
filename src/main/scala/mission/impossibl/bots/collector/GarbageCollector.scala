@@ -36,6 +36,7 @@ object GarbageCollector {
             } else {
               Behaviors.same
             }
+
           case GarbageCollectionAccepted(auctionId, sourceRef) =>
             context.log.info("GC Accepted for auction id {}", auctionId)
             val garbage = state.ongoingAuctions.get(auctionId)
@@ -48,6 +49,7 @@ object GarbageCollector {
             val updatedAuctions = state.ongoingAuctions.removed(auctionId)
             newNode.ref ! GarbageCollectionInfo(instance.id, 10.seconds)
             collector(instance, state.copy(ongoingAuctions = updatedAuctions, futureSources = updatedPath))
+
           case GarbageCollectionRejected(auctionId) =>
             context.log.info("GC Rejected for auction id {}", auctionId)
             val garbage = state.ongoingAuctions.get(auctionId)
@@ -64,33 +66,15 @@ object GarbageCollector {
             }
             val updatedPath = state.visitedSources.appended(state.futureSources.head.copy(amount = amount))
             collector(instance, state.copy(visitedSources = updatedPath, futureSources = state.futureSources.drop(1), carriedGarbage = updatedGarbageState))
+
+          case Move() =>
+            context.log.info("Collector{} moving towards destination", instance.id)
+            Behaviors.same
         }
       }
     }
 
   sealed trait Command
-
-  final case class Instance(id: Int, capacity: Int, orchestrator: ActorRef[GarbageOrchestrator.Command])
-
-  final case class State(
-                          currentLocation: (Int, Int),
-                          visitedSources: List[GarbagePathElem] = List.empty,
-                          futureSources: List[GarbagePathElem] = List.empty,
-                          carriedGarbage: Int = 0,
-                          reservedSpace: Int = 0,
-                          ongoingAuctions: Map[UUID, Garbage] = Map.empty
-                        )
-
-  final case class Garbage(
-                            location: (Int, Int),
-                            amount: Int
-                          )
-
-  final case class GarbagePathElem(
-                                    location: (Int, Int),
-                                    amount: Int,
-                                    ref: ActorRef[WasteSource.Command]
-                                  )
 
 
   final case class GarbageCollectionCallForProposal(auctionId: UUID, sourceId: Int, sourceLocation: (Int, Int), garbageAmount: Int) extends Command
@@ -102,4 +86,6 @@ object GarbageCollector {
   final case class GarbageCollectionRejected(auctionId: UUID) extends Command
 
   final case class CollectGarbage(amount: Int) extends Command
+
+  final case class Move() extends Command
 }
