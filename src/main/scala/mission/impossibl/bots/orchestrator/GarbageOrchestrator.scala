@@ -2,8 +2,8 @@ package mission.impossibl.bots.orchestrator
 
 import akka.actor.typed.scaladsl.{ActorContext, Behaviors}
 import akka.actor.typed.{ActorRef, Behavior}
-import mission.impossibl.bots.collector.GarbageCollector.{GarbageCollectionAccepted, GarbageCollectionRejected}
 import mission.impossibl.bots.collector.GarbageCollector
+import mission.impossibl.bots.collector.GarbageCollector.{GarbageCollectionAccepted, GarbageCollectionRejected}
 import mission.impossibl.bots.source.WasteSource
 
 import java.util.UUID
@@ -88,11 +88,11 @@ object GarbageOrchestrator {
 
   sealed trait Command
 
-  private final case class AuctionTimeout(auctionId: UUID) extends Command
-
   final case class GarbageCollectionRequest(sourceId: Int, sourceLocation: (Int, Int), sourceRef: ActorRef[WasteSource.Command], garbageAmount: Int) extends Command
 
   final case class GarbageCollectorRegistered(garbageCollector: ActorRef[GarbageCollector.Command]) extends Command
 
   final case class GarbageCollectionProposal(auctionId: UUID, auctionOffer: AuctionOffer) extends Command
+
+  private final case class AuctionTimeout(auctionId: UUID) extends Command
 }

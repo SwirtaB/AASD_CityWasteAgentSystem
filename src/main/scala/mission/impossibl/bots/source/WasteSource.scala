@@ -29,7 +29,7 @@ object WasteSource {
               )
               val auctionTimeout = context.scheduleOnce(DisposalAuctionTimeout, context.self, AuctionTimeout())
               source(instance, state.copy(auctionTimeout = Some(auctionTimeout)))
-            }else{
+            } else {
               Behaviors.same
             }
           case ProduceGarbage(amount) => // simulate garbage production
@@ -54,7 +54,7 @@ object WasteSource {
             context.log.info("Collector {} will arrive in {}", collectorId, estimatedArrival)
             state.auctionTimeout.map(_.cancel()) //todo maybe one timeout could suffice for both
             val collectionTimeout = state.collectionTimeout.getOrElse(context.scheduleOnce(estimatedArrival + LatenessTolerance, context.self, CollectionTimeout()))
-            source(instance, state.copy(collectionTimeout = Some(collectionTimeout), estimatedCollectorArrival= Some(estimatedArrival), auctionTimeout = None))
+            source(instance, state.copy(collectionTimeout = Some(collectionTimeout), estimatedCollectorArrival = Some(estimatedArrival), auctionTimeout = None))
 
           case CollectionTimeout() =>
             context.log.info("Collection Timeout")
@@ -68,7 +68,7 @@ object WasteSource {
 
   final case class Instance(id: Int, location: (Int, Int), capacity: Int, orchestrator: ActorRef[GarbageOrchestrator.Command])
 
-  final case class State(garbage: Int = 0, score: Int = 0,  estimatedCollectorArrival: Option[FiniteDuration] = None, auctionTimeout: Option[Cancellable] = None, collectionTimeout: Option[Cancellable] = None)
+  final case class State(garbage: Int = 0, score: Int = 0, estimatedCollectorArrival: Option[FiniteDuration] = None, auctionTimeout: Option[Cancellable] = None, collectionTimeout: Option[Cancellable] = None)
 
   final case class ProduceGarbage(amount: Int) extends Command
 
@@ -79,5 +79,6 @@ object WasteSource {
   private final case class CheckGarbageLevel() extends Command
 
   private final case class AuctionTimeout() extends Command
+
   private final case class CollectionTimeout() extends Command
 }

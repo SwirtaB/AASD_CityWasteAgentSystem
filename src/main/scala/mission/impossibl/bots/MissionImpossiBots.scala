@@ -3,11 +3,11 @@ package mission.impossibl.bots
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorSystem, Behavior}
 import mission.impossibl.bots.CityWasteAgentSystem.Jumpstart
-import mission.impossibl.bots.source.WasteSource.ProduceGarbage
-import mission.impossibl.bots.sink.WasteSink.{GarbagePacket, GarbagePacketRecord, ProcessGarbage, ReceiveGarbage}
 import mission.impossibl.bots.collector.{GarbageCollector, GarbageCollectorFactory}
 import mission.impossibl.bots.orchestrator.GarbageOrchestratorFactory
+import mission.impossibl.bots.sink.WasteSink.{GarbagePacket, GarbagePacketRecord, ProcessGarbage, ReceiveGarbage}
 import mission.impossibl.bots.sink.WasteSinkFactory
+import mission.impossibl.bots.source.WasteSource.ProduceGarbage
 import mission.impossibl.bots.source.WasteSourceFactory
 
 import java.util.Random

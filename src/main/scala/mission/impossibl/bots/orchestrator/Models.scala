@@ -23,10 +23,10 @@ final case class Auction(
                         )
 
 final case class GarbageToCollect(
-                                        garbageAmount: Int,
-                                        location: (Int, Int),
-                                        sourceId: Int,
-                                        sourceRef: ActorRef[WasteSource.Command]
-                                      )
+                                   garbageAmount: Int,
+                                   location: (Int, Int),
+                                   sourceId: Int,
+                                   sourceRef: ActorRef[WasteSource.Command]
+                                 )
 
 final case class AuctionOffer(gcRef: ActorRef[GarbageCollector.Command]) // todo more auction offer info)

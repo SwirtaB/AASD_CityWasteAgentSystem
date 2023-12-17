@@ -7,10 +7,8 @@ import mission.impossibl.bots.orchestrator.{AuctionOffer, GarbageOrchestrator}
 import mission.impossibl.bots.source.WasteSource
 import mission.impossibl.bots.source.WasteSource.GarbageCollectionInfo
 
-import scala.concurrent.duration._
-
-
 import java.util.UUID
+import scala.concurrent.duration._
 
 object GarbageCollector {
   def apply(instance: Instance, initialLocation: (Int, Int)): Behavior[Command] = {
@@ -61,10 +59,10 @@ object GarbageCollector {
 
           case CollectGarbage(amount) =>
             val updatedGarbageState = state.carriedGarbage + amount
-            if (updatedGarbageState >= 0.95 * instance.capacity){
+            if (updatedGarbageState >= 0.95 * instance.capacity) {
               //init disposal auction
             }
-            val updatedPath = state.visitedSources.appended(state.futureSources.head.copy(amount=amount))
+            val updatedPath = state.visitedSources.appended(state.futureSources.head.copy(amount = amount))
             collector(instance, state.copy(visitedSources = updatedPath, futureSources = state.futureSources.drop(1), carriedGarbage = updatedGarbageState))
         }
       }
