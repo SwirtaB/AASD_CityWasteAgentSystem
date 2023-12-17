@@ -13,14 +13,14 @@ import mission.impossibl.bots.source.WasteSourceFactory
 object CityWasteAgentSystem {
   def apply(): Behavior[Jumpstart] =
     Behaviors.setup { context =>
-      val gcFactory = new GarbageCollectorFactory[Jumpstart](context)
-      val goFactory = new GarbageOrchestratorFactory[Jumpstart](context)
-      val wsFactory = new WasteSourceFactory[Jumpstart](context)
+      val garbageCollectorFactory = new GarbageCollectorFactory[Jumpstart](context)
+      val garbageOrchestratorFactory = new GarbageOrchestratorFactory[Jumpstart](context)
+      val wasteSourceFactory = new WasteSourceFactory[Jumpstart](context)
 
-      val collector1 = gcFactory.spawn(1, 30, (5, 5))
-      val collector2 = gcFactory.spawn(2, 30, (5, 5))
-      val orchestrator1 = goFactory.spawn(1)
-      val source1 = wsFactory.spawn(1, (1, 1), 20, orchestrator1)
+      val collector1 = garbageCollectorFactory.spawn(1, 30, (5, 5))
+      val collector2 = garbageCollectorFactory.spawn(2, 30, (5, 5))
+      val orchestrator1 = garbageOrchestratorFactory.spawn(1)
+      val source1 = wasteSourceFactory.spawn(1, (1, 1), 20, orchestrator1)
 
       // Sink test
       val wasteSinkFactory = new WasteSinkFactory[Jumpstart](context)
