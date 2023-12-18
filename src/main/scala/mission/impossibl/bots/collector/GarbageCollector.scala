@@ -67,13 +67,27 @@ object GarbageCollector {
             val updatedPath = state.visitedSources.appended(state.futureSources.head.copy(amount = amount))
             collector(instance, state.copy(visitedSources = updatedPath, futureSources = state.futureSources.drop(1), carriedGarbage = updatedGarbageState))
 
-          case Move() =>
-            context.log.info("Collector{} moving towards destination", instance.id)
-            Behaviors.same
+          case Move(movement) =>
+            if (state.futureSources.isEmpty) {
+              return Behaviors.same
+            }
+            val newLocation = this.calculate_move_location(state.futureSources.head.location, state.currentLocation, movement)
+            context.log.info("Collector{} moved from {},{} to {},{}",
+              instance.id, state.currentLocation._1, state.currentLocation._2, newLocation._1, newLocation._2)
+            collector(instance, state.copy(currentLocation = newLocation))
         }
       }
     }
-
+  private def calculate_move_location(destination: (Int, Int), location: (Int, Int), movement: Int): (Int, Int) = {
+    val x = math.abs(destination._1 - location._1) - movement
+    if (x < 0) {
+      val y = math.abs(destination._2 - location._2) - math.abs(x)
+      return (x, y)
+    }
+    else {
+      return (x, location._2)
+    }
+  }
   sealed trait Command
 
 
@@ -87,5 +101,5 @@ object GarbageCollector {
 
   final case class CollectGarbage(amount: Int) extends Command
 
-  final case class Move() extends Command
+  final case class Move(movement: Int) extends Command
 }

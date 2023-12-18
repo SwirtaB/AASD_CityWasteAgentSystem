@@ -23,6 +23,8 @@ object WasteSink {
               state.garbage_level + packet.total_mass,
               state.garbage_packets.updated(packet_uuid, packet)))
           case ProcessGarbage(garbage_packet_id) => // simulates garbage processing
+            // TODO change garbage_packets to list of tuples
+            // Change garbage_packet_id to n, get first n packets and process them
             val garbage_packet = state.garbage_packets.get(garbage_packet_id)
             val processed_garbage = garbage_packet.get.total_mass
             context.log.info(

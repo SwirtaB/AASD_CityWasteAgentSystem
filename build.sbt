@@ -17,6 +17,7 @@ lazy val akkaVersion = "2.9.0"
 fork := true
 
 libraryDependencies ++= Seq(
+  "org.apache.commons" % "commons-math3" % "3.6.1",
   "com.typesafe.akka" %% "akka-actor-typed" % akkaVersion,
   "ch.qos.logback" % "logback-classic" % "1.2.11",
   "com.typesafe.akka" %% "akka-actor-testkit-typed" % akkaVersion % Test,
