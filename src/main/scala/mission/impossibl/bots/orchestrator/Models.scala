@@ -11,16 +11,19 @@ final case class Instance(id: Int)
 
 final case class State(
                         garbageCollectors: List[ActorRef[GarbageCollector.Command]],
-                        auctionsInProgress: Map[UUID, Auction] = Map.empty[UUID, Auction]
+                        collectionAuctionsInProgress: Map[UUID, CollectionAuction] = Map.empty[UUID, CollectionAuction]
                       )
 
-final case class Auction(
-                          auctionId: UUID,
-                          expected: Int,
-                          received: List[AuctionOffer],
-                          timeoutRef: Cancellable,
-                          collectionInfo: GarbageToCollect
-                        )
+/**
+ * Auction for collection of garbage from source.
+ */
+final case class CollectionAuction(
+                                    auctionId: UUID,
+                                    expected: Int,
+                                    received: List[CollectionAuctionOffer],
+                                    timeoutRef: Cancellable,
+                                    collectionInfo: GarbageToCollect
+                                  )
 
 final case class GarbageToCollect(
                                    garbageAmount: Int,
@@ -29,4 +32,7 @@ final case class GarbageToCollect(
                                    sourceRef: ActorRef[WasteSource.Command]
                                  )
 
-final case class AuctionOffer(gcRef: ActorRef[GarbageCollector.Command]) // todo more auction offer info)
+/**
+ * Offer for collection of garbage from source.
+ */
+final case class CollectionAuctionOffer(gcRef: ActorRef[GarbageCollector.Command]) // todo more auction offer info)

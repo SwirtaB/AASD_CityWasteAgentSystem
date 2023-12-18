@@ -3,7 +3,7 @@ package mission.impossibl.bots.collector
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, Behavior}
 import mission.impossibl.bots.orchestrator.GarbageOrchestrator.GarbageCollectionProposal
-import mission.impossibl.bots.orchestrator.{AuctionOffer, GarbageOrchestrator}
+import mission.impossibl.bots.orchestrator.{CollectionAuctionOffer, GarbageOrchestrator}
 import mission.impossibl.bots.source.WasteSource
 import mission.impossibl.bots.source.WasteSource.GarbageCollectionInfo
 
@@ -30,7 +30,7 @@ object GarbageCollector {
             context.log.info("Received Garbage Collection CFP for source {} and amount {}", sourceId, garbageAmount)
             if (state.carriedGarbage + garbageAmount + state.ongoingAuctions.values.map(_.amount).sum < instance.capacity) {
               //TODO add logic for offer creation
-              val auctionOffer = AuctionOffer(context.self)
+              val auctionOffer = CollectionAuctionOffer(context.self)
               instance.orchestrator ! GarbageCollectionProposal(auctionId, auctionOffer)
               collector(instance, state.copy(ongoingAuctions = state.ongoingAuctions.updated(auctionId, Garbage(sourceLocation, garbageAmount))))
             } else {

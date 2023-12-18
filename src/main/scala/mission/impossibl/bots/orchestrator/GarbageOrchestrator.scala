@@ -29,46 +29,48 @@ object GarbageOrchestrator {
 
           case GarbageCollectionRequest(sourceId, sourceLocation, sourceRef, garbageAmount) =>
             context.log.info("Orchestrator {} received request to collect garbage from Source {}", instance.id, sourceId)
-            val auction = initAuction(GarbageToCollect(garbageAmount, sourceLocation, sourceId, sourceRef), state.garbageCollectors)
-            orchestrator(instance, state.copy(auctionsInProgress = state.auctionsInProgress.updated(auction.auctionId, auction)))
+            val auction = initCollectionAuction(GarbageToCollect(garbageAmount, sourceLocation, sourceId, sourceRef), state.garbageCollectors)
+            orchestrator(instance, state.copy(collectionAuctionsInProgress = state.collectionAuctionsInProgress.updated(auction.auctionId, auction)))
+
           case GarbageCollectionProposal(auctionId, auctionOffer) =>
             context.log.info("Received proposal for auction {} from {}", auctionId, auctionOffer.gcRef)
-            progressAuction(auctionId, auctionOffer, state, instance)
-          case AuctionTimeout(auctionId) =>
+            progressCollectionAuction(auctionId, auctionOffer, state, instance)
+
+          case CollectionAuctionTimeout(auctionId) =>
             context.log.info("Auction timeout {}", auctionId)
-            state.auctionsInProgress.get(auctionId) match {
+            state.collectionAuctionsInProgress.get(auctionId) match {
               case Some(auction) =>
-                resolveAuction(auction)
-                orchestrator(instance, state.copy(auctionsInProgress = state.auctionsInProgress.removed(auctionId)))
+                resolveCollectionAuction(auction)
+                orchestrator(instance, state.copy(collectionAuctionsInProgress = state.collectionAuctionsInProgress.removed(auctionId)))
               case None => Behaviors.same
             }
         }
       }
     }
 
-  private def initAuction(gcInfo: GarbageToCollect,
-                          gcs: List[ActorRef[GarbageCollector.Command]])
-                         (implicit context: ActorContext[Command]): Auction = {
+  private def initCollectionAuction(gcInfo: GarbageToCollect,
+                                    gcs: List[ActorRef[GarbageCollector.Command]])
+                                   (implicit context: ActorContext[Command]): CollectionAuction = {
     val auctionId = UUID.randomUUID()
-    val scheduledTimeout = context.scheduleOnce(AuctionTimeoutVal, context.self, AuctionTimeout(auctionId))
+    val scheduledTimeout = context.scheduleOnce(AuctionTimeoutVal, context.self, CollectionAuctionTimeout(auctionId))
 
     gcs.foreach(_ ! GarbageCollector.GarbageCollectionCallForProposal(auctionId, gcInfo.sourceId, gcInfo.location, gcInfo.garbageAmount))
-    context.log.info("Initing auction {}, expecting {} offers ", auctionId, gcs.length)
-    Auction(auctionId, gcs.length, List.empty[AuctionOffer], scheduledTimeout, gcInfo)
+    context.log.info("Starting auction {}, expecting {} offers ", auctionId, gcs.length)
+    CollectionAuction(auctionId, gcs.length, List.empty[CollectionAuctionOffer], scheduledTimeout, gcInfo)
   }
 
-  private def progressAuction(auctionId: UUID, auctionOffer: AuctionOffer, state: State, instance: Instance)(implicit context: ActorContext[Command]): Behavior[Command] =
-    state.auctionsInProgress.get(auctionId) match {
+  private def progressCollectionAuction(auctionId: UUID, auctionOffer: CollectionAuctionOffer, state: State, instance: Instance)(implicit context: ActorContext[Command]): Behavior[Command] =
+    state.collectionAuctionsInProgress.get(auctionId) match {
       case Some(auction) =>
         val updatedAuction = auction.copy(received = auction.received.appended(auctionOffer))
         if (updatedAuction.received.length == auction.expected) {
           //all offers received
           context.log.info("All offers received for auction {}", auctionId)
           updatedAuction.timeoutRef.cancel()
-          resolveAuction(updatedAuction)
-          orchestrator(instance, state.copy(auctionsInProgress = state.auctionsInProgress.removed(auctionId)))
+          resolveCollectionAuction(updatedAuction)
+          orchestrator(instance, state.copy(collectionAuctionsInProgress = state.collectionAuctionsInProgress.removed(auctionId)))
         } else {
-          orchestrator(instance, state.copy(auctionsInProgress = state.auctionsInProgress.updated(auctionId, updatedAuction)))
+          orchestrator(instance, state.copy(collectionAuctionsInProgress = state.collectionAuctionsInProgress.updated(auctionId, updatedAuction)))
         }
       case None =>
         context.log.info("Offer for {} does not match any auction", auctionId)
@@ -76,7 +78,7 @@ object GarbageOrchestrator {
         Behaviors.same
     }
 
-  private def resolveAuction(auction: Auction)(implicit context: ActorContext[Command]): Unit = {
+  private def resolveCollectionAuction(auction: CollectionAuction)(implicit context: ActorContext[Command]): Unit = {
     if (auction.received.nonEmpty) {
       //todo proper winning offer choice algorithm
       context.log.info("Winning offer for auction {} from {}", auction.auctionId, auction.received.head.gcRef)
@@ -92,7 +94,7 @@ object GarbageOrchestrator {
 
   final case class GarbageCollectorRegistered(garbageCollector: ActorRef[GarbageCollector.Command]) extends Command
 
-  final case class GarbageCollectionProposal(auctionId: UUID, auctionOffer: AuctionOffer) extends Command
+  final case class GarbageCollectionProposal(auctionId: UUID, auctionOffer: CollectionAuctionOffer) extends Command
 
-  private final case class AuctionTimeout(auctionId: UUID) extends Command
+  private final case class CollectionAuctionTimeout(auctionId: UUID) extends Command
 }
