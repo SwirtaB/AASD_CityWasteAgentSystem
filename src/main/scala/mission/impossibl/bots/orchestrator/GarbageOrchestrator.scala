@@ -29,6 +29,9 @@ object GarbageOrchestrator {
           case GarbageCollectorRegistered(garbageCollector) =>
             val newState = state.copy(garbageCollectors = state.garbageCollectors :+ garbageCollector)
             orchestrator(instance, newState)
+          case WasteSourceRegistered(wasteSource, sourceId) =>
+            val newState = state.copy(wasteSources = state.wasteSources.updated(sourceId, wasteSource))
+            orchestrator(instance, newState)
 
           case GarbageCollectionRequest(sourceId, sourceLocation, sourceRef, garbageAmount) =>
             context.log.info("Orchestrator {} received request to collect garbage from Source {}", instance.id, sourceId)
@@ -100,6 +103,8 @@ object GarbageOrchestrator {
   final case class GarbageCollectionRequest(sourceId: Int, sourceLocation: (Int, Int), sourceRef: ActorRef[WasteSource.Command], garbageAmount: Int) extends Command
 
   final case class GarbageCollectorRegistered(garbageCollector: ActorRef[GarbageCollector.Command]) extends Command
+
+  final case class WasteSourceRegistered(wasteSource: ActorRef[WasteSource.Command], sourceId: Int) extends Command
 
   final case class GarbageCollectionProposal(auctionId: UUID, auctionOffer: AuctionOffer) extends Command
 
