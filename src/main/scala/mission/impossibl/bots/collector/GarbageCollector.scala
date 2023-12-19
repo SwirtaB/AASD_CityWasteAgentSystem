@@ -2,8 +2,8 @@ package mission.impossibl.bots.collector
 
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, Behavior}
-import mission.impossibl.bots.orchestrator.GarbageOrchestrator.GarbageCollectionProposal
-import mission.impossibl.bots.orchestrator.{AuctionOffer, GarbageOrchestrator}
+import mission.impossibl.bots.orchestrator.GarbageOrchestrator.{GarbageCollectionProposal, GarbageDisposalRequest}
+import mission.impossibl.bots.orchestrator.{CollectionAuctionOffer, GarbageOrchestrator}
 import mission.impossibl.bots.source.WasteSource
 import mission.impossibl.bots.source.WasteSource.GarbageCollectionInfo
 
@@ -11,6 +11,8 @@ import java.util.UUID
 import scala.concurrent.duration._
 
 object GarbageCollector {
+  private val DisposalPercentFull = 0.95
+
   def apply(instance: Instance, initialLocation: (Int, Int)): Behavior[Command] = {
     collector(instance, State(initialLocation))
   }
@@ -30,7 +32,7 @@ object GarbageCollector {
             context.log.info("Received Garbage Collection CFP for source {} and amount {}", sourceId, garbageAmount)
             if (state.carriedGarbage + garbageAmount + state.ongoingAuctions.values.map(_.amount).sum < instance.capacity) {
               //TODO add logic for offer creation
-              val auctionOffer = AuctionOffer(context.self)
+              val auctionOffer = CollectionAuctionOffer(context.self)
               instance.orchestrator ! GarbageCollectionProposal(auctionId, auctionOffer)
               collector(instance, state.copy(ongoingAuctions = state.ongoingAuctions.updated(auctionId, Garbage(sourceLocation, garbageAmount))))
             } else {
@@ -44,6 +46,8 @@ object GarbageCollector {
               context.log.info("Won action {} I don't rember of :)", auctionId)
               return Behaviors.same
             }
+            // NOTE: only for testing
+            instance.orchestrator ! GarbageDisposalRequest(instance.id, state.carriedGarbage)
             val newNode = GarbagePathElem(garbage.get.location, garbage.get.amount, sourceRef)
             val updatedPath = state.futureSources.appended(newNode)
             val updatedAuctions = state.ongoingAuctions.removed(auctionId)
@@ -61,8 +65,8 @@ object GarbageCollector {
 
           case CollectGarbage(amount) =>
             val updatedGarbageState = state.carriedGarbage + amount
-            if (updatedGarbageState >= 0.95 * instance.capacity) {
-              //init disposal auction
+            if (updatedGarbageState >= DisposalPercentFull * instance.capacity) {
+              // TODO: init disposal auction
             }
             val updatedPath = state.visitedSources.appended(state.futureSources.head.copy(amount = amount))
             collector(instance, state.copy(visitedSources = updatedPath, futureSources = state.futureSources.drop(1), carriedGarbage = updatedGarbageState))
@@ -75,7 +79,6 @@ object GarbageCollector {
     }
 
   sealed trait Command
-
 
   final case class GarbageCollectionCallForProposal(auctionId: UUID, sourceId: Int, sourceLocation: (Int, Int), garbageAmount: Int) extends Command
 

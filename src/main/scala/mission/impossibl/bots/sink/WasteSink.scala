@@ -2,7 +2,10 @@ package mission.impossibl.bots.sink
 
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, Behavior}
-import mission.impossibl.bots.orchestrator.GarbageOrchestrator
+import mission.impossibl.bots.orchestrator.GarbageOrchestrator.GarbageDisposalProposal
+import mission.impossibl.bots.orchestrator.{DisposalAuctionOffer, GarbageOrchestrator}
+
+import java.util.UUID
 
 object WasteSink {
   def apply(instance: Instance, processing_power: Float): Behavior[Command] = {
@@ -13,6 +16,31 @@ object WasteSink {
     Behaviors.receive {
       (context, message) => {
         message match {
+          case AttachOrchestrator(orchestratorId, orchestratorRef) =>
+            context.log.info("Sink{} attached to Orchestrator{}", instance.id, orchestratorId)
+            orchestratorRef ! GarbageOrchestrator.WasteSinkRegistered(context.self)
+            sink(instance.copy(orchestrator = orchestratorRef), state)
+
+          case GarbageDisposalCallForProposal(auctionId, collectorId, garbageAmount) =>
+            context.log.info("Received Garbage Disposal CFP from Collector{} for {} kg of garbage", collectorId, garbageAmount)
+            // TODO: check processing capabilities before accepting the proposal
+            val auctionOffer = DisposalAuctionOffer(context.self)
+            instance.orchestrator ! GarbageDisposalProposal(auctionId, auctionOffer)
+            sink(instance, state.copy(ongoingAuctions = state.ongoingAuctions.updated(auctionId, garbageAmount)))
+
+          case GarbageDisposalAccepted(auctionId) =>
+            context.log.info("WasteSink{} won auction id {}", instance.id, auctionId)
+            val garbage = state.ongoingAuctions.get(auctionId)
+            if (garbage.isEmpty) {
+              context.log.info("Won action {} I don't rember of :)", auctionId)
+              return Behaviors.same
+            }
+            val updatedAuctions = state.ongoingAuctions.removed(auctionId)
+            sink(instance, state.copy(ongoingAuctions = updatedAuctions))
+
+          case GarbageDisposalRejected(auctionId) =>
+            Behaviors.same
+
           case ReceiveGarbage(packet) => // updates state on garbage receive
             context.log.info(
               s"Sink{}: Received {} kg of garbage.",
@@ -22,6 +50,7 @@ object WasteSink {
             sink(instance, State(state.processing_power,
               state.garbage_level + packet.total_mass,
               state.garbage_packets.updated(packet_uuid, packet)))
+
           case ProcessGarbage(garbage_packet_id) => // simulates garbage processing
             val garbage_packet = state.garbage_packets.get(garbage_packet_id)
             val processed_garbage = garbage_packet.get.total_mass
@@ -38,19 +67,16 @@ object WasteSink {
 
   sealed trait Command
 
-  final case class Instance(id: Int,
-                            location: (Int, Int),
-                            storage_capacity: Float,
-                            orchestrator: ActorRef[GarbageOrchestrator.Command])
-
-  final case class GarbagePacketRecord(waste_source_id: Int, waste_type: Int, waste_mass: Float)
-
-  final case class GarbagePacket(records: List[GarbagePacketRecord], total_mass: Float)
-
-  final case class State(processing_power: Float, garbage_level: Float, garbage_packets: Map[Int, GarbagePacket])
-
   final case class ProcessGarbage(garbage_packet_id: Int) extends Command
 
   final case class ReceiveGarbage(packet: GarbagePacket) extends Command
+
+  final case class AttachOrchestrator(orchestratorId: Int, orchestratorRef: ActorRef[GarbageOrchestrator.Command]) extends Command
+
+  final case class GarbageDisposalCallForProposal(auctionId: UUID, collectorId: Int, garbageAmount: Int) extends Command
+
+  final case class GarbageDisposalAccepted(auctionId: UUID) extends Command
+
+  final case class GarbageDisposalRejected(auctionId: UUID) extends Command
 
 }
