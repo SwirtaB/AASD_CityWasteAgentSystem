@@ -5,6 +5,7 @@ import akka.actor.typed.{ActorRef, Behavior}
 import mission.impossibl.bots.collector.GarbageCollector.CollectGarbage
 import mission.impossibl.bots.orchestrator.GarbageOrchestrator
 
+import java.util.UUID
 import scala.concurrent.duration._
 
 object WasteSource {
@@ -47,7 +48,9 @@ object WasteSource {
             val garbageToCollect = maxAmount.max(state.garbage)
             collectorRef ! CollectGarbage(garbageToCollect)
             state.collectionTimeout.map(_.cancel())
-            source(instance, state.copy(garbage = state.garbage - garbageToCollect, collectionTimeout = None))
+            val garbagePassed =state.garbage - garbageToCollect
+            context.log.info("Passing {} garbage", garbagePassed)
+            source(instance, state.copy(garbage = garbagePassed, collectionTimeout = None))
 
           case GarbageCollectionInfo(collectorId, estimatedArrival) =>
             context.log.info("Collector {} will arrive in {}", collectorId, estimatedArrival)
@@ -67,7 +70,7 @@ object WasteSource {
 
   final case class ProduceGarbage(amount: Int) extends Command
 
-  final case class GarbageCollectionInfo(collectorId: Int, estimatedArrival: FiniteDuration) extends Command
+  final case class GarbageCollectionInfo(collectorId: UUID, estimatedArrival: FiniteDuration) extends Command
 
   final case class DisposeGarbage(maxAmount: Int, collectorRef: ActorRef[CollectGarbage]) extends Command
 

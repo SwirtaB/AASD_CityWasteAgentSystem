@@ -17,8 +17,8 @@ object CityWasteAgentSystem {
       val garbageOrchestratorFactory = new GarbageOrchestratorFactory[Jumpstart](context)
       val wasteSourceFactory = new WasteSourceFactory[Jumpstart](context)
 
-      val collector1 = garbageCollectorFactory.spawn(1, 30, (5, 5))
-      val collector2 = garbageCollectorFactory.spawn(2, 30, (5, 5))
+      val collector1 = garbageCollectorFactory.spawn(30, (5, 5))
+      val collector2 = garbageCollectorFactory.spawn(30, (5, 5))
       val orchestrator1 = garbageOrchestratorFactory.spawn(1)
       val source1 = wasteSourceFactory.spawn(1, (1, 1), 20, orchestrator1)
 
