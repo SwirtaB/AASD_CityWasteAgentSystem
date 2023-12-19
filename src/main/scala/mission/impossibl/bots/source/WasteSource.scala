@@ -60,6 +60,10 @@ object WasteSource {
             context.log.info("Collection Timeout")
             context.self ! CheckGarbageLevel()
             source(instance, state.copy(collectionTimeout = None))
+
+          case GarbageScoreSummary(garbage_score) =>
+            context.log.info("Waste Source got its Score")
+            source(instance, state.copy(score = state.score.updated(garbage_score)))
         }
       }
     }
@@ -81,4 +85,6 @@ object WasteSource {
   private final case class AuctionTimeout() extends Command
 
   private final case class CollectionTimeout() extends Command
+  
+  private final case class GarbageScoreSummary(garbage_score: Int) extends Command
 }

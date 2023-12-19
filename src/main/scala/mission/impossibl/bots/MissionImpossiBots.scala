@@ -141,7 +141,8 @@ object CityWasteAgentSystem {
 }
 
 object MissionImpossiBots extends App {
-//  val cityWasteAgentSystem: ActorSystem[CityWasteAgentSystem.Jumpstart] = ActorSystem(CityWasteAgentSystem(), "CityWasteAgentSystem")
+  // val cityWasteAgentSystem: ActorSystem[CityWasteAgentSystem.Jumpstart] = ActorSystem(CityWasteAgentSystem(), "CityWasteAgentSystem")
+  // cityWasteAgentSystem ! Jumpstart
   val environment: ActorSystem[EnvironmentSimulator.Command] = ActorSystem(EnvironmentSimulator(), "EnvSim")
   environment ! EnvironmentSimulator.SpawnGarbageOrchestrator()
   environment ! EnvironmentSimulator.SpawnWasteSource(20, (1, 1))
@@ -149,5 +150,5 @@ object MissionImpossiBots extends App {
   environment ! EnvironmentSimulator.SpawnGarbageCollector(30, (5,5))
   environment ! EnvironmentSimulator.SpawnGarbageCollector(30, (5,5))
 
-  environment ! EnvironmentSimulator.SimulationTick()
+  // environment ! EnvironmentSimulator.SimulationTick()
 }

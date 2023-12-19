@@ -8,5 +8,6 @@ target/
 *.iml
 
 .metals
+.vscode
 .bloop
 .bsp

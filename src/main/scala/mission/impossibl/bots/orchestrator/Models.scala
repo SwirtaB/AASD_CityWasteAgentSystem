@@ -11,7 +11,8 @@ final case class Instance(id: Int)
 
 final case class State(
                         garbageCollectors: List[ActorRef[GarbageCollector.Command]],
-                        auctionsInProgress: Map[UUID, Auction] = Map.empty[UUID, Auction]
+                        auctionsInProgress: Map[UUID, Auction] = Map.empty[UUID, Auction],
+                        wasteSources: Map[Int, ActorRef[WasteSource.Command]] = Map.empty[Int, ActorRef[WasteSource.Command]],
                       )
 
 final case class Auction(

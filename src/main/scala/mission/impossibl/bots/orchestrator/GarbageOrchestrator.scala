@@ -5,6 +5,7 @@ import akka.actor.typed.{ActorRef, Behavior}
 import mission.impossibl.bots.collector.GarbageCollector
 import mission.impossibl.bots.collector.GarbageCollector.{GarbageCollectionAccepted, GarbageCollectionRejected}
 import mission.impossibl.bots.source.WasteSource
+import mission.impossibl.bots.source.WasteSource.GarbageScoreSummary
 
 import java.util.UUID
 import scala.concurrent.duration._
@@ -14,7 +15,9 @@ object GarbageOrchestrator {
   private val AuctionTimeoutVal = 1.seconds
 
   def apply(instance: Instance): Behavior[Command] = {
-    val initialState = State(List.empty[ActorRef[GarbageCollector.Command]])
+    val initialState = State(
+      List.empty[ActorRef[GarbageCollector.Command]]
+      )
     orchestrator(instance, initialState)
   }
 
@@ -30,7 +33,7 @@ object GarbageOrchestrator {
           case GarbageCollectionRequest(sourceId, sourceLocation, sourceRef, garbageAmount) =>
             context.log.info("Orchestrator {} received request to collect garbage from Source {}", instance.id, sourceId)
             val auction = initAuction(GarbageToCollect(garbageAmount, sourceLocation, sourceId, sourceRef), state.garbageCollectors)
-            orchestrator(instance, state.copy(auctionsInProgress = state.auctionsInProgress.updated(auction.auctionId, auction)))
+            orchestrator(instance, state.copy(auctionsInProgress = state.auctionsInProgress.updated(auction.auctionId, auction), wasteSources = state.wasteSources.updated(sourceId, sourceRef)))
           case GarbageCollectionProposal(auctionId, auctionOffer) =>
             context.log.info("Received proposal for auction {} from {}", auctionId, auctionOffer.gcRef)
             progressAuction(auctionId, auctionOffer, state, instance)
@@ -42,6 +45,12 @@ object GarbageOrchestrator {
                 orchestrator(instance, state.copy(auctionsInProgress = state.auctionsInProgress.removed(auctionId)))
               case None => Behaviors.same
             }
+
+          case GarbageScore(sourceId: Int, garbage_score: Int) =>
+            context.log.info("Waste source with id {} got score {}", sourceId, garbage_score)
+            val waste_source = state.wasteSources.get(sourceId)
+            waste_source ! GarbageScoreSummary(garbage_score)
+            Behaviors.same
         }
       }
     }
@@ -93,6 +102,8 @@ object GarbageOrchestrator {
   final case class GarbageCollectorRegistered(garbageCollector: ActorRef[GarbageCollector.Command]) extends Command
 
   final case class GarbageCollectionProposal(auctionId: UUID, auctionOffer: AuctionOffer) extends Command
+
+  final case class GarbageScore(sourceId: Int, garbage_score: Int) extends Command
 
   private final case class AuctionTimeout(auctionId: UUID) extends Command
 }
