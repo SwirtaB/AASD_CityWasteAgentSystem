@@ -14,7 +14,7 @@ object WasteSource {
   private val LatenessTolerance = 10.seconds
 
   def apply(instance: Instance, orchestratorRef: ActorRef[GarbageOrchestrator.Command]): Behavior[Command] = {
-    source(instance, State(orchestratorRef))
+    source(instance, State())
   }
 
   private def source(instance: Instance, state: State): Behavior[Command] =
@@ -68,7 +68,7 @@ object WasteSource {
 
           case GarbageScoreSummary(garbage_score) =>
             context.log.info("Waste Source got its Score")
-            source(instance, state.copy(score = state.score.updated(garbage_score)))
+            source(instance, state.copy(score = garbage_score))
         }
       }
     }
@@ -93,5 +93,5 @@ object WasteSource {
 
   private final case class CollectionTimeout() extends Command
   
-  private final case class GarbageScoreSummary(garbage_score: Int) extends Command
+  final case class GarbageScoreSummary(garbage_score: Int) extends Command
 }

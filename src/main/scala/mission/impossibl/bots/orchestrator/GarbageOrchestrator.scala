@@ -51,8 +51,7 @@ object GarbageOrchestrator {
 
           case GarbageScore(sourceId: Int, garbage_score: Int) =>
             context.log.info("Waste source with id {} got score {}", sourceId, garbage_score)
-            val waste_source = state.wasteSources.get(sourceId)
-            waste_source ! GarbageScoreSummary(garbage_score)
+            state.wasteSources.get(sourceId).flatMap(_ ! GarbageScoreSummary(garbage_score))
             Behaviors.same
         }
       }
