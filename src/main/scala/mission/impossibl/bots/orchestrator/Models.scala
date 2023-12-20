@@ -12,7 +12,7 @@ import mission.impossibl.bots.source.WasteSource
 import java.util.UUID
 import scala.concurrent.duration.FiniteDuration
 
-final case class Instance(id: Int)
+final case class Instance(id: UUID)
 
 final case class State(
   garbageCollectors: List[ActorRef[GarbageCollector.Command]],
@@ -40,7 +40,7 @@ final case class DisposalAuction(
 final case class CollectionDetails(
   garbageAmount: Int,
   location: (Int, Int),
-  sourceId: Int,
+  sourceId: UUID,
   sourceRef: ActorRef[WasteSource.Command]
 )
 
@@ -54,4 +54,4 @@ final case class CollectionAuctionOffer(
   when: FiniteDuration
 )
 
-final case class DisposalAuctionOffer(wasteSink: ActorRef[WasteSink.Command], location: (Int, Int) = (0, 0)) // todo more auction offer info)
+final case class DisposalAuctionOffer(wasteSink: ActorRef[WasteSink.Command], location: (Int, Int))

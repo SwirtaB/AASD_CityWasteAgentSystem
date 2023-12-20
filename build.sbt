@@ -6,7 +6,7 @@ scalaVersion := s"2.13.12"
 
 resolvers += "Akka library repository".at("https://repo.akka.io/maven")
 
-scalacOptions += "-Xfatal-warnings"
+scalacOptions ++= Seq("-unchecked", "-deprecation", "-Xfatal-warnings")
 
 lazy val akkaVersion = "2.9.0"
 
@@ -16,9 +16,4 @@ lazy val akkaVersion = "2.9.0"
 // sbt tasks, consider https://github.com/spray/sbt-revolver/
 fork := true
 
-libraryDependencies ++= Seq(
-  "com.typesafe.akka" %% "akka-actor-typed" % akkaVersion,
-  "ch.qos.logback" % "logback-classic" % "1.2.11",
-  "com.typesafe.akka" %% "akka-actor-testkit-typed" % akkaVersion % Test,
-  "org.scalatest" %% "scalatest" % "3.2.12" % Test
-)
+libraryDependencies ++= Seq("com.typesafe.akka" %% "akka-actor-typed" % akkaVersion, "ch.qos.logback" % "logback-classic" % "1.4.7")

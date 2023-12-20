@@ -14,6 +14,9 @@ object GarbageCollector {
   private val DisposalPercentFull       = 0.95
   private val DisposalAuctionTimeoutVal = 10.seconds
 
+  //todo: correctly handle used space
+  //todo: exchange garbage with sink
+
   def apply(instance: Instance, initialLocation: (Int, Int)): Behavior[Command] =
     collector(instance, State(initialLocation))
 
@@ -24,6 +27,7 @@ object GarbageCollector {
           context.log.info("Collector {} attached to Orchestrator {}", instance.id, orchestratorId)
           orchestratorRef ! GarbageOrchestrator.GarbageCollectorRegistered(context.self)
           collector(instance.copy(orchestrator = orchestratorRef), state)
+
         case GarbageCollectionCallForProposal(auctionId, sourceId, sourceLocation, garbageAmount) =>
           context.log.info("Received Garbage Collection CFP for source {} and amount {}", sourceId, garbageAmount)
           if (instance.capacity - garbageAmount - state.reservedSpace > 0) {
@@ -38,6 +42,7 @@ object GarbageCollector {
               )
             )
           } else {
+            context.log.info("Ignoring CFP, can't handle {} garbage, already carrying {}/{}", garbageAmount, state.reservedSpace, instance.capacity)
             Behaviors.same
           }
 
@@ -80,11 +85,11 @@ object GarbageCollector {
           collector(instance, updatedState.copy(visitedSources = updatedPath, futureSources = state.futureSources.drop(1), carriedGarbage = updatedGarbageState))
 
         case Move() =>
-          context.log.info("Collector{} moving towards destination", instance.id)
           state.disposalPoint match {
             case Some(DisposalPoint(destination, _)) =>
               val loc = move(destination, state.currentLocation, instance.speed)
               if (loc == destination) {
+                context.log.error("At destination - sink at {}", destination)
                 // TODO: exchange garbage maybe via ask pattern
               }
               collector(instance, state.copy(currentLocation = loc, disposalPoint = None))
@@ -94,6 +99,7 @@ object GarbageCollector {
                   val dest = nextSource.location
                   val loc  = move(dest, state.currentLocation, instance.speed)
                   if (loc == dest) {
+                    context.log.error("At destination - source at {}", dest)
                     nextSource.ref ! DisposeGarbage(instance.capacity - state.carriedGarbage, context.self)
                   }
                   collector(instance, state.copy(currentLocation = loc))
@@ -142,7 +148,7 @@ object GarbageCollector {
 
   sealed trait Command
 
-  final case class GarbageCollectionCallForProposal(auctionId: UUID, sourceId: Int, sourceLocation: (Int, Int), garbageAmount: Int) extends Command
+  final case class GarbageCollectionCallForProposal(auctionId: UUID, sourceId: UUID, sourceLocation: (Int, Int), garbageAmount: Int) extends Command
 
   final case class GarbageCollectionAccepted(auctionId: UUID, sourceRef: ActorRef[WasteSource.Command]) extends Command
 

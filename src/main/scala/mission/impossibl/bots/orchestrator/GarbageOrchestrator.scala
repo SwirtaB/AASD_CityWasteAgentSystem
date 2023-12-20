@@ -142,7 +142,7 @@ object GarbageOrchestrator {
 
   sealed trait Command
 
-  final case class GarbageCollectionRequest(sourceId: Int, sourceLocation: (Int, Int), sourceRef: ActorRef[WasteSource.Command], garbageAmount: Int) extends Command
+  final case class GarbageCollectionRequest(sourceId: UUID, sourceLocation: (Int, Int), sourceRef: ActorRef[WasteSource.Command], garbageAmount: Int) extends Command
 
   final case class GarbageDisposalRequest(collectorId: UUID, garbageAmount: Int) extends Command
 

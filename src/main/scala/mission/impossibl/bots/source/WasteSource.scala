@@ -33,12 +33,11 @@ object WasteSource {
           source(instance, checkGarbageLevel(state.copy(auctionTimeout = None), instance, context))
 
         case DisposeGarbage(maxAmount, collectorRef) =>
+          state.collectionTimeout.map(_.cancel())
           val garbageToCollect = maxAmount.max(state.garbage)
           collectorRef ! CollectGarbage(garbageToCollect)
-          state.collectionTimeout.map(_.cancel())
-          val garbagePassed = state.garbage - garbageToCollect
-          context.log.info("Passing {} garbage", garbagePassed)
-          source(instance, state.copy(garbage = garbagePassed, collectionTimeout = None))
+          context.log.info("Passing {} garbage", garbageToCollect)
+          source(instance, state.copy(garbage = state.garbage - garbageToCollect, collectionTimeout = None))
 
         case GarbageCollectionInfo(collectorId, estimatedArrival) =>
           context.log.info("Collector {} will arrive in {}", collectorId, estimatedArrival)

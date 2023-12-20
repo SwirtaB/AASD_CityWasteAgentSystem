@@ -6,8 +6,11 @@ import mission.impossibl.bots.orchestrator.GarbageOrchestrator.GarbageDisposalPr
 import mission.impossibl.bots.orchestrator.{DisposalAuctionOffer, GarbageOrchestrator}
 
 import java.util.UUID
+import scala.concurrent.duration._
 
 object WasteSink {
+  val AuctionTimeoutVal: FiniteDuration = 10.seconds
+  private val ReservationTimeoutVal     = 1.minute
   def apply(instance: Instance, processing_power: Float): Behavior[Command] =
     sink(instance, State(processing_power, 0.0f, Map.empty[Int, GarbagePacket]))
 
@@ -21,50 +24,68 @@ object WasteSink {
 
         case GarbageDisposalCallForProposal(auctionId, collectorId, garbageAmount) =>
           context.log.info("Received Garbage Disposal CFP from Collector{} for {} kg of garbage", collectorId, garbageAmount)
-          // TODO: check processing capabilities before accepting the proposal
-          val auctionOffer = DisposalAuctionOffer(context.self)
-          instance.orchestrator ! GarbageDisposalProposal(auctionId, auctionOffer)
-          sink(instance, state.copy(ongoingAuctions = state.ongoingAuctions.updated(auctionId, garbageAmount)))
+          val emptySpace = calcEmptySpace(state.garbagePackets, state.reservedSpace, instance.storageCapacity)
+          if (emptySpace >= garbageAmount) {
+            val auctionOffer = DisposalAuctionOffer(context.self, instance.location)
+            instance.orchestrator ! GarbageDisposalProposal(auctionId, auctionOffer)
+
+            val timeout = context.scheduleOnce(AuctionTimeoutVal, context.self, ReservationTimeout(auctionId))
+            sink(instance, state.copy(reservedSpace = state.reservedSpace.appended(Reservation(auctionId, collectorId, garbageAmount.toFloat, timeout))))
+          } else {
+            Behaviors.same
+          }
 
         case GarbageDisposalAccepted(auctionId) =>
-          context.log.info("WasteSink{} won auction id {}", instance.id, auctionId)
-          val garbage = state.ongoingAuctions.get(auctionId)
-          if (garbage.isEmpty) {
-            context.log.info("Won action {} I don't rember of :)", auctionId)
-            return Behaviors.same
+          context.log.info("Won auction {}", auctionId)
+          val reservation = state.reservedSpace.find(_.auctionId == auctionId)
+          reservation match {
+            case Some(reservation) =>
+              reservation.timeout.cancel()
+              val reservationTimeout  = context.scheduleOnce(ReservationTimeoutVal, context.self, ReservationTimeout(auctionId))
+              val updatedReservations = state.reservedSpace.filterNot(_.auctionId == auctionId).appended(reservation.copy(timeout = reservationTimeout))
+              sink(instance, state.copy(reservedSpace = updatedReservations))
+
+            case None =>
+              context.log.info("Won action {} I don't remember of :)", auctionId)
+              Behaviors.same
           }
-          val updatedAuctions = state.ongoingAuctions.removed(auctionId)
-          sink(instance, state.copy(ongoingAuctions = updatedAuctions))
-
         case GarbageDisposalRejected(auctionId) =>
-          Behaviors.same
+          val reservations = state.reservedSpace.filterNot(_.auctionId == auctionId) // drop reservation from rejected auction
+          sink(instance, state.copy(reservedSpace = reservations))
 
-        case ReceiveGarbage(packet) => // updates state on garbage receive
+        case ReceiveGarbage(packet, collectorId) => // updates state on garbage receive
           context.log.info(
-            s"Sink{}: Received {} kg of garbage.",
-            instance.id,
-            packet.total_mass
+            "Received {} kg of garbage from {}.",
+            packet.totalMass,
+            collectorId
           )
-          val packet_uuid = 1 // For testing only, change to UUID later
-          sink(instance, State(state.processing_power, state.garbage_level + packet.total_mass, state.garbage_packets.updated(packet_uuid, packet)))
+          val packetId = 1 // For testing only, change to UUID later
+          sink(instance, State(state.processingPower, state.garbageLevel + packet.totalMass, state.garbagePackets.updated(packetId, packet)))
 
         case ProcessGarbage(garbage_packet_id) => // simulates garbage processing
-          val garbage_packet    = state.garbage_packets.get(garbage_packet_id)
-          val processed_garbage = garbage_packet.get.total_mass
+          val garbage_packet    = state.garbagePackets.get(garbage_packet_id)
+          val processed_garbage = garbage_packet.get.totalMass
           context.log.info(
             s"Sink{}: Processed {} kg of garbage.",
             instance.id,
             processed_garbage
           )
-          sink(instance, State(state.processing_power, state.garbage_level - processed_garbage, state.garbage_packets.removed(garbage_packet_id)))
+          sink(instance, State(state.processingPower, state.garbageLevel - processed_garbage, state.garbagePackets.removed(garbage_packet_id)))
+
+        case ReservationTimeout(auctionId) =>
+          val reservations = state.reservedSpace.filterNot(_.auctionId == auctionId) // drop reservation from rejected auction
+          sink(instance, state.copy(reservedSpace = reservations))
       }
     }
+
+  private def calcEmptySpace(garbagePackets: Map[Int, GarbagePacket], reservations: List[Reservation], capacity: Float): Float =
+    capacity - reservations.map(_.wasteMass).sum - garbagePackets.values.map(_.totalMass).sum
 
   sealed trait Command
 
   final case class ProcessGarbage(garbage_packet_id: Int) extends Command
 
-  final case class ReceiveGarbage(packet: GarbagePacket) extends Command
+  final case class ReceiveGarbage(packet: GarbagePacket, collectorId: UUID) extends Command
 
   final case class AttachOrchestrator(orchestratorId: Int, orchestratorRef: ActorRef[GarbageOrchestrator.Command]) extends Command
 
@@ -73,5 +94,7 @@ object WasteSink {
   final case class GarbageDisposalAccepted(auctionId: UUID) extends Command
 
   final case class GarbageDisposalRejected(auctionId: UUID) extends Command
+
+  private final case class ReservationTimeout(auctionId: UUID) extends Command
 
 }
