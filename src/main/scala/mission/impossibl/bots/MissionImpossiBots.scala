@@ -19,10 +19,11 @@ object CityWasteAgentSystem {
       val wasteSourceFactory         = new WasteSourceFactory[Jumpstart](context)
 
       val collector1    = garbageCollectorFactory.spawn(100, (5, 5))
-      //val collector2    = garbageCollectorFactory.spawn(80, (10, 10))
-      //val collector3    = garbageCollectorFactory.spawn(50, (20, 20))
+      val collector2    = garbageCollectorFactory.spawn(80, (10, 10))
+      val collector3    = garbageCollectorFactory.spawn(50, (20, 20))
+      val collector4    = garbageCollectorFactory.spawn(500, (20, 20))
       val orchestrator1 = garbageOrchestratorFactory.spawn()
-      val sources       = wasteSourceFactory.spawnRandom((25, 25), List(10, 10, 50), orchestrator1)
+      val sources       = wasteSourceFactory.spawnRandom((25, 25), List(10, 10, 50, 5, 10, 12, 17, 19, 3), orchestrator1)
 
       // Sink test
       val wasteSinkFactory = new WasteSinkFactory[Jumpstart](context)
@@ -31,8 +32,9 @@ object CityWasteAgentSystem {
 
       // TODO: garbage collectors and waste sinks should automatically find the closest orchestrators
       collector1 ! GarbageCollector.AttachOrchestrator(1, orchestrator1)
-      //collector2 ! GarbageCollector.AttachOrchestrator(1, orchestrator1)
-      //collector3 ! GarbageCollector.AttachOrchestrator(1, orchestrator1)
+      collector2 ! GarbageCollector.AttachOrchestrator(1, orchestrator1)
+      collector3 ! GarbageCollector.AttachOrchestrator(1, orchestrator1)
+      collector4 ! GarbageCollector.AttachOrchestrator(1, orchestrator1)
 
       sink1 ! WasteSink.AttachOrchestrator(1, orchestrator1)
 

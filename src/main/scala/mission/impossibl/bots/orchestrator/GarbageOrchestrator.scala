@@ -12,9 +12,6 @@ import java.util.UUID
 import scala.concurrent.duration._
 
 object GarbageOrchestrator {
-  //todo:
-  // - ensure collector proritizes disposal when possible
-  // - should not take part in collection auctions if there is disposal point in state
 
   private val AuctionTimeoutVal = 1.seconds
 
