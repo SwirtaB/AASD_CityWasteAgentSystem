@@ -10,7 +10,7 @@ import scala.concurrent.duration._
 
 class GarbageCollectorFactory[T](val context: ActorContext[T]) {
   def spawn(capacity: Int, initialLocation: (Int, Int)): ActorRef[GarbageCollector.Command] = {
-    val gcInstance = Instance(UUID.randomUUID(), capacity)
+    val gcInstance = Instance(UUID.randomUUID(), capacity, speed = 5)
     val newGarbageCollector = context.spawn(GarbageCollector(gcInstance, initialLocation), s"Collector_${gcInstance.id}")
 
     implicit val ec: ExecutionContextExecutor = context.system.executionContext

@@ -11,7 +11,7 @@ import scala.concurrent.duration._
 object WasteSource {
   private val DisposalPercentFull    = 0.7
   private val DisposalAuctionTimeout = 3.seconds
-  private val LatenessTolerance      = 10.seconds
+  private val LatenessTolerance      = 20.seconds
 
   def apply(instance: Instance): Behavior[Command] =
     source(instance, State())
@@ -34,7 +34,7 @@ object WasteSource {
 
         case DisposeGarbage(maxAmount, collectorRef) =>
           state.collectionTimeout.map(_.cancel())
-          val garbageToCollect = maxAmount.max(state.garbage)
+          val garbageToCollect = maxAmount.min(state.garbage)
           collectorRef ! CollectGarbage(garbageToCollect)
           context.log.info("Passing {} garbage", garbageToCollect)
           source(instance, state.copy(garbage = state.garbage - garbageToCollect, collectionTimeout = None))

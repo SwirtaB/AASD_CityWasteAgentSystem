@@ -19,10 +19,10 @@ final case class State(
                         visitedSources: List[GarbagePathElem] = List.empty,
                         futureSources: List[GarbagePathElem] = List.empty,
                         carriedGarbage: Int = 0,
-                        reservedSpace: Int = 0,
                         ongoingCollectionAuctions: Map[UUID, Garbage] = Map.empty,
                         disposalAuctionTimeout: Option[Cancellable] = None,
-                        disposalPoint: Option[DisposalPoint] = None
+                        disposalPoint: Option[DisposalPoint] = None,
+                        auctionMissed: Int = 0
                       )
 final case class DisposalPoint(
   location : (Int, Int),
@@ -37,5 +37,6 @@ final case class Garbage(
 final case class GarbagePathElem(
                                   location: (Int, Int),
                                   amount: Int,
+                                  id: UUID,
                                   ref: ActorRef[WasteSource.Command]
                                 )

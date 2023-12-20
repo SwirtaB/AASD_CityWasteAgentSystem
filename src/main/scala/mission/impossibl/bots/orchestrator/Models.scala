@@ -21,21 +21,23 @@ final case class State(
   disposalAuctionsInProgress: Map[UUID, DisposalAuction] = Map.empty[UUID, DisposalAuction]
 )
 
-final case class CollectionAuction(
+sealed trait Auction
+final case class CollectionAuction (
   auctionId: UUID,
   expected: Int,
   received: List[CollectionAuctionOffer],
   timeoutRef: Cancellable,
   collectionDetails: CollectionDetails
-)
+) extends Auction
 
 final case class DisposalAuction(
   auctionId: UUID,
   expected: Int,
   received: List[DisposalAuctionOffer],
   timeoutRef: Cancellable,
-  disposalDetails: DisposalDetails
-)
+  disposalDetails: DisposalDetails,
+  collectorRef: ActorRef[GarbageCollector.Command]
+) extends Auction
 
 final case class CollectionDetails(
   garbageAmount: Int,
