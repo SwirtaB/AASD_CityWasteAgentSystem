@@ -51,7 +51,7 @@ object GarbageOrchestrator {
 
           case GarbageScore(sourceId: Int, garbage_score: Int) =>
             context.log.info("Waste source with id {} got score {}", sourceId, garbage_score)
-            state.wasteSources.get(sourceId).flatMap(_ ! GarbageScoreSummary(garbage_score))
+            state.wasteSources.get(sourceId).map(_ ! GarbageScoreSummary(garbage_score))
             Behaviors.same
         }
       }

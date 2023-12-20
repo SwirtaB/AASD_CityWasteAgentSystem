@@ -13,7 +13,7 @@ object WasteSource {
   private val DisposalAuctionTimeout = 3.seconds
   private val LatenessTolerance = 10.seconds
 
-  def apply(instance: Instance, orchestratorRef: ActorRef[GarbageOrchestrator.Command]): Behavior[Command] = {
+  def apply(instance: Instance): Behavior[Command] = {
     source(instance, State())
   }
 
