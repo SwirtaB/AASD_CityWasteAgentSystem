@@ -111,7 +111,7 @@ object GarbageCollector {
               context.log.info("Moving to disposal point {}, currently at {}, with speed {}", destination, loc, instance.speed)
               if (loc == destination) {
                 context.log.error("At destination - sink at {}", destination)
-                val packets = state.visitedSources.map(g => GarbagePacketRecord(g.id, wasteMass = g.amount.toFloat))
+                val packets = state.visitedSources.map(g => GarbagePacketRecord(g.id, wasteMass = g.amount))
                 sink ! ReceiveGarbage(GarbagePacket(packets, packets.map(_.wasteMass).sum), instance.id)
                 context.log.info("Emptied")
                 collector(instance, state.copy(carriedGarbage = 0, visitedSources = List.empty, disposalPoint = None))
