@@ -16,4 +16,5 @@ lazy val akkaVersion = "2.9.0"
 // sbt tasks, consider https://github.com/spray/sbt-revolver/
 fork := true
 
-libraryDependencies ++= Seq("com.typesafe.akka" %% "akka-actor-typed" % akkaVersion, "ch.qos.logback" % "logback-classic" % "1.4.7")
+libraryDependencies ++= Seq("org.apache.commons" % "commons-math3" % "3.6.1",
+  "com.typesafe.akka" %% "akka-actor-typed" % akkaVersion, "ch.qos.logback" % "logback-classic" % "1.4.7")

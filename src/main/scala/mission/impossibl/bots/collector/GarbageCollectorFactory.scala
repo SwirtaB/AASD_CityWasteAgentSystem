@@ -14,9 +14,8 @@ class GarbageCollectorFactory[T](val context: ActorContext[T]) {
     val newGarbageCollector = context.spawn(GarbageCollector(gcInstance, initialLocation), s"Collector_${gcInstance.id}")
 
     implicit val ec: ExecutionContextExecutor = context.system.executionContext
-    context.system.scheduler.scheduleAtFixedRate(
-      1.second,
-      1.second)(() => newGarbageCollector ! Move())
+    context.system.scheduler.scheduleAtFixedRate(FiniteDuration(1, SECONDS),
+      FiniteDuration(1, SECONDS))(() => newGarbageCollector ! Move())
 
     newGarbageCollector
   }

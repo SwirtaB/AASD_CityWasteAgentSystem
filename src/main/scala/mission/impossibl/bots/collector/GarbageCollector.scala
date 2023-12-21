@@ -2,6 +2,7 @@ package mission.impossibl.bots.collector
 
 import akka.actor.typed.scaladsl.{ActorContext, Behaviors}
 import akka.actor.typed.{ActorRef, Behavior}
+import mission.impossibl.bots.collector.GarbageCollector.Move
 import mission.impossibl.bots.orchestrator.GarbageOrchestrator.{GarbageCollectionProposal, GarbageDisposalRequest}
 import mission.impossibl.bots.orchestrator.{CollectionAuctionOffer, GarbageOrchestrator}
 import mission.impossibl.bots.sink.{GarbagePacket, GarbagePacketRecord}
@@ -101,6 +102,14 @@ object GarbageCollector {
           )
           collector(instance, updatedState.copy(visitedSources = updatedPath, futureSources = state.futureSources.drop(1)))
 
+          case Move(movement) =>
+            if (state.futureSources.isEmpty) {
+              return Behaviors.same
+            }
+            val newLocation = this.calculate_move_location(state.futureSources.head.location, state.currentLocation, movement)
+            context.log.info("Collector{} moved from {},{} to {},{}",
+              instance.id, state.currentLocation._1, state.currentLocation._2, newLocation._1, newLocation._2)
+            collector(instance, state.copy(currentLocation = newLocation))
         case Move() =>
           context.log.info("Move, disposal {}, head source {}, carried {}", state.disposalPoint, state.futureSources.headOption, state.carriedGarbage)
           state.disposalPoint match {
@@ -120,7 +129,7 @@ object GarbageCollector {
               state.futureSources.headOption match {
                 case Some(nextSource) =>
                   val dest = nextSource.location
-                  val loc  = move(dest, state.currentLocation, instance.speed)
+                  val loc = move(dest, state.currentLocation, instance.speed)
                   context.log.info("Moving to source point {}, from {} to {}, with speed {}", dest, state.currentLocation, loc, instance.speed)
                   if (loc == dest) {
                     context.log.error("At destination - source at {}", dest)
@@ -148,6 +157,7 @@ object GarbageCollector {
               collector(instance, updatedState)
             case None => Behaviors.same // action has already timed out and was repeated
           }
+        }
       }
     }
 
@@ -192,6 +202,17 @@ object GarbageCollector {
     val timeout = context.scheduleOnce(DisposalAuctionTimeoutVal, context.self, DisposalAuctionTimeout())
     state.copy(disposalAuctionTimeout = Some(timeout))
   }
+
+private def calculate_move_location(destination: (Int, Int), location: (Int, Int), movement: Int): (Int, Int) = {
+  val x = math.abs(destination._1 - location._1) - movement
+  if (x < 0) {
+    val y = math.abs(destination._2 - location._2) - math.abs(x)
+    return (x, y)
+  }
+  else {
+    return (x, location._2)
+  }
+}
   sealed trait Command
 
   final case class GarbageCollectionCallForProposal(auctionId: UUID, sourceId: UUID, sourceLocation: (Int, Int), garbageAmount: Int) extends Command
@@ -205,7 +226,7 @@ object GarbageCollector {
   // Technical
   final case class AttachOrchestrator(orchestratorId: Int, orchestratorRef: ActorRef[GarbageOrchestrator.Command]) extends Command
 
-  final case class Move() extends Command
+  final case class Move(movement: Int) extends Command
 
   // Disposal
   final case class DisposalAuctionTimeout() extends Command
