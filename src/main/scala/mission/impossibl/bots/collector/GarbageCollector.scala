@@ -110,7 +110,7 @@ object GarbageCollector {
             context.log.info("Collector{} moved from {},{} to {},{}",
               instance.id, state.currentLocation._1, state.currentLocation._2, newLocation._1, newLocation._2)
             collector(instance, state.copy(currentLocation = newLocation))
-        case Move() =>
+        case Move2() =>
           context.log.info("Move, disposal {}, head source {}, carried {}", state.disposalPoint, state.futureSources.headOption, state.carriedGarbage)
           state.disposalPoint match {
             case Some(DisposalPoint(destination, sink)) =>
@@ -159,7 +159,7 @@ object GarbageCollector {
           }
         }
       }
-    }
+
 
   private def move(destination: (Int, Int), location: (Int, Int), movement: Int): (Int, Int) = {
     val deltaX = math.abs(destination._1 - location._1)
@@ -227,6 +227,7 @@ private def calculate_move_location(destination: (Int, Int), location: (Int, Int
   final case class AttachOrchestrator(orchestratorId: Int, orchestratorRef: ActorRef[GarbageOrchestrator.Command]) extends Command
 
   final case class Move(movement: Int) extends Command
+  final case class Move2() extends Command
 
   // Disposal
   final case class DisposalAuctionTimeout() extends Command

@@ -12,7 +12,7 @@ object WasteSink {
   val AuctionTimeoutVal: FiniteDuration = 10.seconds
   private val ReservationTimeoutVal     = 1.minute
   def apply(instance: Instance, processing_power: Float): Behavior[Command] =
-    sink(instance, State(processing_power, 0.0f, Map.empty[Int, GarbagePacket]))
+    sink(instance, State(processing_power))
 
   private def sink(instance: Instance, state: State): Behavior[Command] =
     Behaviors.receive { (context, message) =>
@@ -59,32 +59,32 @@ object WasteSink {
             packet.totalMass,
             collectorId
           )
-          val packetId = 1 // For testing only, change to UUID later
-          sink(instance, State(state.processingPower, state.garbageLevel + packet.totalMass, state.garbagePackets.updated(packetId, packet)))
+          sink(instance, state.copy(garbagePackets = state.garbagePackets :+ packet))
 
-        case ProcessGarbage(garbage_packet_id) => // simulates garbage processing
+        case ProcessGarbage(massToProcess) => // simulates garbage processing
           // TODO change garbage_packets to list of tuples
-            // Change garbage_packet_id to n, get first n packets and process themval garbage_packet    = state.garbagePackets.get(garbage_packet_id)
-          val processed_garbage = garbage_packet.get.totalMass
+          // Change garbage_packet_id to n, get first n packets and process themval garbage_packet    = state.garbagePackets.get(garbage_packet_id)
+          // val (toProcess, processed) = process(massToProcess, state.garbagePackets, state.processedGarbage)
+          // state.garbagePackets.headOption
+          // val processed_garbage = garbage_packet.get.totalMass
           context.log.info(
-            s"Sink{}: Processed {} kg of garbage.",
-            instance.id,
-            processed_garbage
+            "Processed {} kg of garbage."
           )
-          sink(instance, State(state.processingPower, state.garbageLevel - processed_garbage, state.garbagePackets.removed(garbage_packet_id)))
+          sink(instance, state)
 
         case ReservationTimeout(auctionId) =>
           val reservations = state.reservedSpace.filterNot(_.auctionId == auctionId) // drop reservation from rejected auction
           sink(instance, state.copy(reservedSpace = reservations))
       }
+
     }
 
-  private def calcEmptySpace(garbagePackets: Map[Int, GarbagePacket], reservations: List[Reservation], capacity: Float): Float =
-    capacity - reservations.map(_.wasteMass).sum - garbagePackets.values.map(_.totalMass).sum
+  private def calcEmptySpace(garbagePackets: List[GarbagePacket], reservations: List[Reservation], capacity: Float): Float =
+    capacity - reservations.map(_.wasteMass).sum - garbagePackets.map(_.totalMass).sum
 
   sealed trait Command
 
-  final case class ProcessGarbage(garbage_packet_id: Int) extends Command
+  final case class ProcessGarbage(massToProcess: Int) extends Command
 
   final case class ReceiveGarbage(packet: GarbagePacket, collectorId: UUID) extends Command
 
