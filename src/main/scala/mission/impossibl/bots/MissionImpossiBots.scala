@@ -104,7 +104,7 @@ object MissionImpossiBots extends App {
   environment ! EnvironmentSimulator.SpawnGarbageCollector(30, (5, 5), 3)
 
   implicit val ec: ExecutionContextExecutor = environment.executionContext
-  environment.scheduler.scheduleAtFixedRate(10.second, 10.second)(() => environment ! EnvironmentSimulator.SourceSimulationTick())
-  environment.scheduler.scheduleAtFixedRate(10.second, 10.second)(() => environment ! EnvironmentSimulator.SinkSimulationTick())
+  environment.scheduler.scheduleAtFixedRate(10.seconds, 10.seconds)(() => environment ! EnvironmentSimulator.SourceSimulationTick())
+  environment.scheduler.scheduleAtFixedRate(10.seconds, 10.seconds)(() => environment ! EnvironmentSimulator.SinkSimulationTick())
   environment.scheduler.scheduleAtFixedRate(1.second, 1.second)(() => environment ! EnvironmentSimulator.CollectorSimulationTick())
 }
