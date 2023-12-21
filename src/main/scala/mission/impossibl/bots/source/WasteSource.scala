@@ -4,6 +4,7 @@ import akka.actor.typed.scaladsl.{ActorContext, Behaviors}
 import akka.actor.typed.{ActorRef, Behavior}
 import mission.impossibl.bots.collector.GarbageCollector.CollectGarbage
 import mission.impossibl.bots.orchestrator.GarbageOrchestrator
+import mission.impossibl.bots.source.WasteSource.{AttachOrchestrator, AuctionTimeout, Command}
 
 import java.util.UUID
 import scala.concurrent.duration._
@@ -19,6 +20,11 @@ object WasteSource {
   private def source(instance: Instance, state: State): Behavior[Command] =
     Behaviors.receive { (context, message) =>
       message match {
+        case AttachOrchestrator(orchestratorId, orchestratorRef) =>
+          context.log.info("Waste Source{} attached to Orchestrator{}", instance.id, orchestratorId)
+          orchestratorRef ! GarbageOrchestrator.WasteSourceRegistered(context.self, instance.id)
+          source(instance.copy(orchestrator = orchestratorRef), state)
+
         case ProduceGarbage(amount) => // simulate garbage production
           context.log.info(
             s"New garbage in town! {}, current amount: {}",
@@ -48,8 +54,12 @@ object WasteSource {
         case CollectionTimeout() =>
           context.log.info("Collection Timeout")
           source(instance, checkGarbageLevel(state.copy(collectionTimeout = None), instance, context))
+
+        case GarbageScoreSummary(garbage_score) =>
+          context.log.info("Waste Source got its Score")
+          source(instance, state.copy(score = garbage_score))
+        }
       }
-    }
 
   private def checkGarbageLevel(state: State, instance: Instance, context: ActorContext[Command]): State =
     if (state.collectionTimeout.isEmpty && state.auctionTimeout.isEmpty && state.garbage > DisposalPercentFull * instance.capacity) {
@@ -63,6 +73,7 @@ object WasteSource {
     } else {
       state
     }
+    }
 
   sealed trait Command
 
@@ -72,7 +83,11 @@ object WasteSource {
 
   final case class DisposeGarbage(maxAmount: Int, collectorRef: ActorRef[CollectGarbage]) extends Command
 
+  final case class AttachOrchestrator(orchestratorId: Int, orchestratorRef: ActorRef[GarbageOrchestrator.Command]) extends Command
+
   private final case class AuctionTimeout() extends Command
 
   private final case class CollectionTimeout() extends Command
+
+  final case class GarbageScoreSummary(garbage_score: Int) extends Command
 }

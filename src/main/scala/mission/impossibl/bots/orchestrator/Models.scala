@@ -16,9 +16,8 @@ final case class Instance(id: UUID)
 
 final case class State(
   garbageCollectors: List[ActorRef[GarbageCollector.Command]],
-  wasteSinks: List[ActorRef[WasteSink.Command]],
-  collectionAuctionsInProgress: Map[UUID, CollectionAuction] = Map.empty[UUID, CollectionAuction],
-  disposalAuctionsInProgress: Map[UUID, DisposalAuction] = Map.empty[UUID, DisposalAuction]
+  auctionsInProgress: Map[UUID, Auction] = Map.empty[UUID, Auction],
+  wasteSources: Map[Int, ActorRef[WasteSource.Command]] = Map.empty[Int, ActorRef[WasteSource.Command]],
 )
 
 sealed trait Auction

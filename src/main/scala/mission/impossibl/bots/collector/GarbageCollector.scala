@@ -206,11 +206,11 @@ object GarbageCollector {
 private def calculate_move_location(destination: (Int, Int), location: (Int, Int), movement: Int): (Int, Int) = {
   val x = math.abs(destination._1 - location._1) - movement
   if (x < 0) {
-    val y = math.abs(destination._2 - location._2) - math.abs(x)
-    return (x, y)
+    (destination._1, math.abs(destination._2 - location._2) - math.abs(x))
+
   }
   else {
-    return (x, location._2)
+     (x, location._2)
   }
 }
   sealed trait Command
