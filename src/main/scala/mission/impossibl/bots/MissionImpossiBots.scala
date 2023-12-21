@@ -9,6 +9,7 @@ import mission.impossibl.bots.sink.{WasteSink, WasteSinkFactory}
 import mission.impossibl.bots.source.{WasteSource, WasteSourceFactory}
 import org.apache.commons.math3.distribution.PoissonDistribution
 
+
 import scala.concurrent.ExecutionContextExecutor
 import scala.concurrent.duration.{FiniteDuration, SECONDS}
 
@@ -133,8 +134,17 @@ object CityWasteAgentSystem {
       sink_1 ! ReceiveGarbage(garbage_packet)
       sink_1 ! ProcessGarbage()
 
-      collector1 ! GarbageCollector.AttachOrchestrator(1, orchestrator1) // TODO: GC should automatically find the closest GO
+
+      // TODO: garbage collectors and waste sinks should automatically find the closest orchestrators
+      collector1 ! GarbageCollector.AttachOrchestrator(1, orchestrator1)
       collector2 ! GarbageCollector.AttachOrchestrator(1, orchestrator1)
+
+      sink1 ! WasteSink.AttachOrchestrator(1, orchestrator1)
+
+      // NOTE: for testing only
+      val garbage_packet = GarbagePacket(List(GarbagePacketRecord(1, 1, 10.0f), GarbagePacketRecord(2, 1, 30.0f)), 40.0f)
+      sink1 ! ReceiveGarbage(garbage_packet)
+      sink1 ! ProcessGarbage(1)
 
       Behaviors.same
     }

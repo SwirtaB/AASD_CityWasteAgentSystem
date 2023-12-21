@@ -7,6 +7,7 @@ import mission.impossibl.bots.Utils
 
 import org.apache.commons.math3.distribution.PoissonDistribution
 
+
 object WasteSink {
   def apply(instance: Instance, efficiency: Int): Behavior[Command] = {
     sink(instance, State(efficiency, 0, List.empty[GarbagePacket]))
@@ -16,6 +17,31 @@ object WasteSink {
     Behaviors.receive {
       (context, message) => {
         message match {
+          case AttachOrchestrator(orchestratorId, orchestratorRef) =>
+            context.log.info("Sink{} attached to Orchestrator{}", instance.id, orchestratorId)
+            orchestratorRef ! GarbageOrchestrator.WasteSinkRegistered(context.self)
+            sink(instance.copy(orchestrator = orchestratorRef), state)
+
+          case GarbageDisposalCallForProposal(auctionId, collectorId, garbageAmount) =>
+            context.log.info("Received Garbage Disposal CFP from Collector{} for {} kg of garbage", collectorId, garbageAmount)
+            // TODO: check processing capabilities before accepting the proposal
+            val auctionOffer = DisposalAuctionOffer(context.self)
+            instance.orchestrator ! GarbageDisposalProposal(auctionId, auctionOffer)
+            sink(instance, state.copy(ongoingAuctions = state.ongoingAuctions.updated(auctionId, garbageAmount)))
+
+          case GarbageDisposalAccepted(auctionId) =>
+            context.log.info("WasteSink{} won auction id {}", instance.id, auctionId)
+            val garbage = state.ongoingAuctions.get(auctionId)
+            if (garbage.isEmpty) {
+              context.log.info("Won action {} I don't rember of :)", auctionId)
+              return Behaviors.same
+            }
+            val updatedAuctions = state.ongoingAuctions.removed(auctionId)
+            sink(instance, state.copy(ongoingAuctions = updatedAuctions))
+
+          case GarbageDisposalRejected(auctionId) =>
+            Behaviors.same
+
           case ReceiveGarbage(packet) => // updates state on garbage receive
             context.log.info(
               s"Sink{}: Received {} kg of garbage.",
@@ -76,6 +102,6 @@ object WasteSink {
 
   final case class ProcessGarbage() extends Command
 
-  final case class ReceiveGarbage(packet: GarbagePacket) extends Command
+  final case class GarbageDisposalRejected(auctionId: UUID) extends Command
 
 }
