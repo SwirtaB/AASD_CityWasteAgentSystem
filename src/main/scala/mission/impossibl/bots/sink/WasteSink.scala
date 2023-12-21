@@ -3,13 +3,13 @@ package mission.impossibl.bots.sink
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, Behavior}
 import mission.impossibl.bots.orchestrator.GarbageOrchestrator
-import mission.impossibl.bots.orchestrator.GarbageOrchestrator.GarbageScore
+import mission.impossibl.bots.Utils
 
 import org.apache.commons.math3.distribution.PoissonDistribution
 
 object WasteSink {
-  def apply(instance: Instance, processing_power: Float): Behavior[Command] = {
-    sink(instance, State(processing_power, 0.0f, Map.empty[Int, GarbagePacket]))
+  def apply(instance: Instance, efficiency: Int): Behavior[Command] = {
+    sink(instance, State(efficiency, 0, List.empty[GarbagePacket]))
   }
 
   private def sink(instance: Instance, state: State): Behavior[Command] =
@@ -19,36 +19,43 @@ object WasteSink {
           case ReceiveGarbage(packet) => // updates state on garbage receive
             context.log.info(
               s"Sink{}: Received {} kg of garbage.",
-              instance.id, packet.total_mass
+              instance.id, packet.totalMass
             )
-            val packet_uuid = 1 // For testing only, change to UUID later
-            sink(instance, State(state.processing_power,
-              state.garbage_level + packet.total_mass,
-              state.garbage_packets.updated(packet_uuid, packet)))
-          case ProcessGarbage(garbage_packet_id) => // simulates garbage processing
-            // TODO change garbage_packets to list of tuples
-            // Change garbage_packet_id to n, get first n packets and process them
-            val garbage_packet = state.garbage_packets.get(garbage_packet_id)
-            val processed_garbage = garbage_packet.get.total_mass
-            val garbage_packet_records = garbage_packet.get.records
-            val garbage_score = score_garbage(garbage_packet_records)
+            sink(instance, State(state.efficiency, state.garbageLevel + packet.totalMass, state.garbagePackets :+ packet))
+          case ProcessGarbage() => // simulates garbage processing
+            val garbagePacket = state.garbagePackets.head
+            // shift dist from N(0, 1) to N(efficiency, 1) and convert to discrete number
+            val processedWaste = Utils.sample_normal(state.efficiency, 1)
+            context.log.info(s"Sink{}: Processed {} kg of garbage.", instance.id, processedWaste)
 
-            context.log.info(
-              s"Sink{}: Processed {} kg of garbage.",
-              instance.id, processed_garbage
-            )
+            val remainingWaste = garbagePacket.totalMass - processedWaste
+            if (remainingWaste > 0) {
+              val updatedGarbagePacket = GarbagePacket(garbagePacket.records, remainingWaste)
+              sink(instance,
+                State(state.efficiency,
+                      state.garbageLevel - processedWaste,
+                      state.garbagePackets.updated(0, updatedGarbagePacket)))
+            }
+            else {
+              // remainingWaste <= 0
+              val newHead = state.garbagePackets(1)
+              val updatedGarbagePacket = GarbagePacket(newHead.records, newHead.totalMass - math.abs(remainingWaste))
 
-            for (record <- garbage_packet_records) instance.orchestrator ! GarbageOrchestrator.GarbageScore(record.waste_source_id, garbage_score)
+              // TODO garbage score messages
+              // val garbage_score = score_garbage(garbage_packet_records)
+              // for (record <- garbage_packet_records) instance.orchestrator ! GarbageOrchestrator.GarbageScore(record.wasteSourceId, garbage_score)
 
-            sink(instance, State(state.processing_power,
-              state.garbage_level - processed_garbage,
-              state.garbage_packets.removed(garbage_packet_id)))
-
+              sink(instance, State(state.efficiency,
+                state.garbageLevel - processedWaste,
+                state.garbagePackets.tail.updated(0, updatedGarbagePacket)))
+            }
         }
       }
     }
 
   private def score_garbage(records: List[GarbagePacketRecord]): Int = {
+      // FIXME You should use different distribution since Poisson models number of events in time period.
+      // Imo normal dist will be good enough (ofc you should cast results to int)
       val scoreDist = new PoissonDistribution(3.0)
       val score = scoreDist.sample()
       score
@@ -58,16 +65,16 @@ object WasteSink {
 
   final case class Instance(id: Int,
                             location: (Int, Int),
-                            storage_capacity: Float,
+                            storageCapacity: Int,
                             orchestrator: ActorRef[GarbageOrchestrator.Command])
 
-  final case class GarbagePacketRecord(waste_source_id: Int, waste_type: Int, waste_mass: Float)
+  final case class GarbagePacketRecord(wasteSourceId: Int, wasteType: Int, mass: Int)
 
-  final case class GarbagePacket(records: List[GarbagePacketRecord], total_mass: Float)
+  final case class GarbagePacket(records: List[GarbagePacketRecord], totalMass: Int)
 
-  final case class State(processing_power: Float, garbage_level: Float, garbage_packets: Map[Int, GarbagePacket])
+  final case class State(efficiency: Int, garbageLevel: Int, garbagePackets: List[GarbagePacket])
 
-  final case class ProcessGarbage(garbage_packet_id: Int) extends Command
+  final case class ProcessGarbage() extends Command
 
   final case class ReceiveGarbage(packet: GarbagePacket) extends Command
 
