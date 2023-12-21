@@ -27,40 +27,43 @@ object EnvironmentSimulator {
     Behaviors.receive { (context, message) =>
       message match {
         case SpawnWasteSource(capacity, location) =>
-          // TODO id: Int -> UUID
           val orchestrator = state.garbageOrchestrators.head
           val wasteSource  = state.wasteSourceFactory.spawn(location, capacity, orchestrator)
-
           context.log.info(s"Waste Source at {} created. Capacity {}", location, capacity)
           simulate(state.copy(wasteSources = state.wasteSources :+ wasteSource))
+
         case SpawnWasteSink(efficiency, storageCapacity, location) =>
           val orchestrator = state.garbageOrchestrators.head
-          val wasteSink    = state.wasteSinkFactory.spawn(location, efficiency.toFloat, storageCapacity.toFloat, orchestrator)
-
+          val wasteSink    = state.wasteSinkFactory.spawn(location, efficiency, storageCapacity, orchestrator)
           context.log.info(s"Waste Sink at ({},{}) created. Processing power {}, capacity {}", location._1, location._2, efficiency, storageCapacity)
           wasteSink ! AttachOrchestrator(1, orchestrator)
           simulate(state.copy(wasteSinks = state.wasteSinks :+ wasteSink))
+
         case SpawnGarbageCollector(capacity, location, speed) =>
           val collector = state.garbageCollectorFactory.spawn(capacity, location, speed)
-          // TODO better assigment
           collector ! GarbageCollector.AttachOrchestrator(0, state.garbageOrchestrators.head)
           context.log.info(s"Garbage collector at ({},{}) created. Capacity {}", location._1, location._2, capacity)
           simulate(state.copy(garbageCollectors = state.garbageCollectors :+ collector))
+
         case SpawnGarbageOrchestrator() =>
           val orchestrator = state.garbageOrchestratorFactory.spawn()
           context.log.info(s"Garbage orchestrator created.")
           simulate(state.copy(garbageOrchestrators = state.garbageOrchestrators :+ orchestrator))
-        case SimulationTick() =>
+
+        case SourceSimulationTick() =>
           state.wasteSources.foreach { source =>
             val amount = state.sourceDist.sample()
             source ! WasteSource.ProduceGarbage(amount)
           }
+          Behaviors.same
+
+        case SinkSimulationTick() =>
           state.wasteSinks.foreach { sink =>
-            val packetCount = state.sourceDist.sample()
-            // TODO see WasteSink
             sink ! WasteSink.ProcessGarbage()
-            // context.log.info(s"Processed {} packets of garbage", packetCount)
           }
+          Behaviors.same
+
+        case CollectorSimulationTick() =>
           state.garbageCollectors.foreach { collector =>
             collector ! GarbageCollector.Move()
           }
@@ -82,7 +85,10 @@ object EnvironmentSimulator {
     garbageCollectors: List[ActorRef[GarbageCollector.Command]] = List.empty,
     garbageOrchestrators: List[ActorRef[GarbageOrchestrator.Command]] = List.empty
   )
-  final case class SimulationTick()                                                            extends Command
+
+  final case class SourceSimulationTick()                                                      extends Command
+  final case class SinkSimulationTick()                                                        extends Command
+  final case class CollectorSimulationTick()                                                   extends Command
   final case class SpawnWasteSource(capacity: Int, location: (Int, Int))                       extends Command
   final case class SpawnWasteSink(efficiency: Int, storageCapacity: Int, location: (Int, Int)) extends Command
   final case class SpawnGarbageCollector(capacity: Int, location: (Int, Int), speed: Int)      extends Command
@@ -98,5 +104,7 @@ object MissionImpossiBots extends App {
   environment ! EnvironmentSimulator.SpawnGarbageCollector(30, (5, 5), 3)
 
   implicit val ec: ExecutionContextExecutor = environment.executionContext
-  environment.scheduler.scheduleAtFixedRate(1.second, 1.second)(() => environment ! EnvironmentSimulator.SimulationTick())
+  environment.scheduler.scheduleAtFixedRate(10.second, 10.second)(() => environment ! EnvironmentSimulator.SourceSimulationTick())
+  environment.scheduler.scheduleAtFixedRate(10.second, 10.second)(() => environment ! EnvironmentSimulator.SinkSimulationTick())
+  environment.scheduler.scheduleAtFixedRate(1.second, 1.second)(() => environment ! EnvironmentSimulator.CollectorSimulationTick())
 }
