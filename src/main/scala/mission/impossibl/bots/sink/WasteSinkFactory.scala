@@ -6,9 +6,11 @@ import akka.actor.typed.scaladsl.ActorContext
 class WasteSinkFactory[T](val context: ActorContext[T]) {
   def spawn(id: Int,
             location: (Int, Int),
-            processing_power: Float,
-            storage_capacity: Float): ActorRef[WasteSink.Command] = {
-    val wasteSinkInstance = Instance(id, location, storage_capacity, null)
-    context.spawn(WasteSink(wasteSinkInstance, processing_power), s"Sink$id")
+            efficiency: Int,
+            storageCapacity: Int,
+            orchestrator: ActorRef[GarbageOrchestrator.Command]): ActorRef[WasteSink.Command] = {
+    val wasteSinkInstance = WasteSink.Instance(id, location, storageCapacity, orchestrator)
+    context.spawn(WasteSink(wasteSinkInstance, efficiency), s"Sink$id")
+
   }
 }

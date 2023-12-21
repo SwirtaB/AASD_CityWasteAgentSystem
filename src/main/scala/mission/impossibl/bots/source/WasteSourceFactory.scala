@@ -14,10 +14,10 @@ class WasteSourceFactory[T](val context: ActorContext[T]) {
     val wsInstance = Instance(id, location, capacity, orchestrator)
     val newSource = context.spawn(WasteSource(wsInstance), s"Source$id")
 
-    val random = new Random()
-    implicit val ec: ExecutionContextExecutor = context.system.executionContext
-    context.system.scheduler.scheduleAtFixedRate(FiniteDuration(1, SECONDS),
-      FiniteDuration(1, SECONDS))(() => newSource ! ProduceGarbage(Math.abs(random.nextInt() % 10)))
+//    val random = new Random()
+//    implicit val ec: ExecutionContextExecutor = context.system.executionContext
+//    context.system.scheduler.scheduleAtFixedRate(FiniteDuration(1, SECONDS),
+//      FiniteDuration(1, SECONDS))(() => newSource ! ProduceGarbage(Math.abs(random.nextInt() % 10)))
 
     newSource
   }
