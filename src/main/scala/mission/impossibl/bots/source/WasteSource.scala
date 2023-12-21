@@ -4,7 +4,6 @@ import akka.actor.typed.scaladsl.{ActorContext, Behaviors}
 import akka.actor.typed.{ActorRef, Behavior}
 import mission.impossibl.bots.collector.GarbageCollector.CollectGarbage
 import mission.impossibl.bots.orchestrator.GarbageOrchestrator
-import mission.impossibl.bots.source.WasteSource.{AttachOrchestrator, AuctionTimeout, Command}
 
 import java.util.UUID
 import scala.concurrent.duration._
@@ -58,8 +57,8 @@ object WasteSource {
         case GarbageScoreSummary(garbage_score) =>
           context.log.info("Waste Source got its Score")
           source(instance, state.copy(score = garbage_score))
-        }
       }
+    }
 
   private def checkGarbageLevel(state: State, instance: Instance, context: ActorContext[Command]): State =
     if (state.collectionTimeout.isEmpty && state.auctionTimeout.isEmpty && state.garbage > DisposalPercentFull * instance.capacity) {
@@ -72,7 +71,6 @@ object WasteSource {
       state.copy(auctionTimeout = Some(context.scheduleOnce(DisposalAuctionTimeout, context.self, AuctionTimeout())))
     } else {
       state
-    }
     }
 
   sealed trait Command

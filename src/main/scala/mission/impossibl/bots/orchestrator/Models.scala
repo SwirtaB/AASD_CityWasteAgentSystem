@@ -15,13 +15,14 @@ import scala.concurrent.duration.FiniteDuration
 final case class Instance(id: UUID)
 
 final case class State(
-  garbageCollectors: List[ActorRef[GarbageCollector.Command]],
+  garbageCollectors: List[ActorRef[GarbageCollector.Command]] = List.empty,
+  wasteSinks: List[ActorRef[WasteSink.Command]] = List.empty,
   auctionsInProgress: Map[UUID, Auction] = Map.empty[UUID, Auction],
-  wasteSources: Map[Int, ActorRef[WasteSource.Command]] = Map.empty[Int, ActorRef[WasteSource.Command]],
+  wasteSources: Map[UUID, ActorRef[WasteSource.Command]] = Map.empty[UUID, ActorRef[WasteSource.Command]]
 )
 
 sealed trait Auction
-final case class CollectionAuction (
+final case class CollectionAuction(
   auctionId: UUID,
   expected: Int,
   received: List[CollectionAuctionOffer],

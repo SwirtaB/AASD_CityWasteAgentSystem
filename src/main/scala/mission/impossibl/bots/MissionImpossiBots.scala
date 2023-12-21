@@ -8,11 +8,8 @@ import mission.impossibl.bots.sink.{WasteSink, WasteSinkFactory}
 import mission.impossibl.bots.source.{WasteSource, WasteSourceFactory}
 import org.apache.commons.math3.distribution.PoissonDistribution
 
-
 import scala.concurrent.ExecutionContextExecutor
 import scala.concurrent.duration.{FiniteDuration, SECONDS}
-
-
 
 object EnvironmentSimulator {
   def apply(sourceDistParam: Double = 2.0, moveDistParams: (Int, Int) = (4, 1)): Behavior[Command] =
@@ -23,9 +20,7 @@ object EnvironmentSimulator {
       val wasteSinkFactory           = new WasteSinkFactory[Command](context)
       val sourceDist                 = new PoissonDistribution(2.0)
 
-
-      simulate(State(sourceDist, sourceDistParam, moveDistParams, wasteSourceFactory,
-        wasteSinkFactory, garbageCollectorFactory, garbageOrchestratorFactory))
+      simulate(State(sourceDist, sourceDistParam, moveDistParams, wasteSourceFactory, wasteSinkFactory, garbageCollectorFactory, garbageOrchestratorFactory))
     }
   private def simulate(state: State): Behavior[Command] =
     Behaviors.receive { (context, message) =>
@@ -40,9 +35,9 @@ object EnvironmentSimulator {
         case SpawnWasteSink(efficiency, storageCapacity, location) =>
           // TODO id: Int -> UUID
           val orchestrator = state.garbageOrchestrators.head
-          val wasteSink    = state.wasteSinkFactory.spawn(location, efficiency, storageCapacity, orchestrator)
+          val wasteSink    = state.wasteSinkFactory.spawn(location, efficiency.toFloat, storageCapacity.toFloat, orchestrator)
 
-          context.log.info(s"Waste Sink at ({},{}) created. Processing power {}, capacity {}", location._1, location._2, processing_power, storage_capacity)
+          context.log.info(s"Waste Sink at ({},{}) created. Processing power {}, capacity {}", location._1, location._2, efficiency, storageCapacity)
           simulate(state.copy(wasteSinks = state.wasteSinks :+ wasteSink))
         case SpawnGarbageCollector(capacity, location) =>
           val collector = state.garbageCollectorFactory.spawn(capacity, location)
@@ -62,8 +57,8 @@ object EnvironmentSimulator {
           state.wasteSinks.foreach { sink =>
             val packetCount = state.sourceDist.sample()
             // TODO see WasteSink
-            sink ! WasteSink.ProcessGarbage(packetCount)
-            context.log.info(s"Processed {} packets of garbage", packetCount)
+            sink ! WasteSink.ProcessGarbage()
+            // context.log.info(s"Processed {} packets of garbage", packetCount)
           }
           state.garbageCollectors.foreach { collector =>
             // TODO we can randomize move so that it simulates traffic
@@ -77,7 +72,7 @@ object EnvironmentSimulator {
   final case class State(
     sourceDist: PoissonDistribution,
     sourceDistParam: Double,
-                         moveDistParams: (Int, Int),
+    moveDistParams: (Int, Int),
     wasteSourceFactory: WasteSourceFactory[_],
     wasteSinkFactory: WasteSinkFactory[_],
     garbageCollectorFactory: GarbageCollectorFactory[_],
@@ -87,11 +82,11 @@ object EnvironmentSimulator {
     garbageCollectors: List[ActorRef[GarbageCollector.Command]] = List.empty,
     garbageOrchestrators: List[ActorRef[GarbageOrchestrator.Command]] = List.empty
   )
-  final case class SimulationTick()                                                                       extends Command
-  final case class SpawnWasteSource(capacity: Int, location: (Int, Int))                                  extends Command
+  final case class SimulationTick()                                                            extends Command
+  final case class SpawnWasteSource(capacity: Int, location: (Int, Int))                       extends Command
   final case class SpawnWasteSink(efficiency: Int, storageCapacity: Int, location: (Int, Int)) extends Command
-  final case class SpawnGarbageCollector(capacity: Int, location: (Int, Int))                             extends Command
-  final case class SpawnGarbageOrchestrator()                                                             extends Command
+  final case class SpawnGarbageCollector(capacity: Int, location: (Int, Int))                  extends Command
+  final case class SpawnGarbageOrchestrator()                                                  extends Command
 }
 
 object MissionImpossiBots extends App {

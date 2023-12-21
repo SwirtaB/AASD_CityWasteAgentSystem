@@ -15,6 +15,6 @@ final case class GarbagePacketRecord(wasteSourceId: UUID, wasteType: Int = 0, wa
 
 final case class GarbagePacket(records: List[GarbagePacketRecord], totalMass: Float)
 
-final case class State(processingPower: Float, garbageLevel: Float, garbagePackets: Map[Int, GarbagePacket], reservedSpace: List[Reservation] = List.empty)
+final case class State(id: UUID, efficiency: Float, garbagePackets: List[GarbagePacket] = List.empty, reservedSpace: List[Reservation] = List.empty)
 
 final case class Reservation(auctionId: UUID, garbageCollectorId: UUID, wasteMass: Float, timeout: Cancellable)

@@ -16,12 +16,8 @@ object GarbageOrchestrator {
 
   private val AuctionTimeoutVal = 1.seconds
 
-  def apply(instance: Instance): Behavior[Command] = {
-    val initialState = State(
-      List.empty[ActorRef[GarbageCollector.Command]]
-      )
-    orchestrator(instance, initialState)
-  }
+  def apply(instance: Instance): Behavior[Command] =
+    orchestrator(instance, State())
 
   private def orchestrator(instance: Instance, state: State): Behavior[Command] =
     Behaviors.receive { (context, message) =>
@@ -30,23 +26,23 @@ object GarbageOrchestrator {
         case GarbageCollectorRegistered(garbageCollector) =>
           val newState = state.copy(garbageCollectors = state.garbageCollectors :+ garbageCollector)
           orchestrator(instance, newState)
-          case WasteSourceRegistered(wasteSource, sourceId) =>
-            val newState = state.copy(wasteSources = state.wasteSources.updated(sourceId, wasteSource))
-            orchestrator(instance, newState)
+        case WasteSourceRegistered(wasteSource, sourceId) =>
+          val newState = state.copy(wasteSources = state.wasteSources.updated(sourceId, wasteSource))
+          orchestrator(instance, newState)
 
-        case WasteSinkRegistered(wasteSink) =>
+        case WasteSinkRegistered(wasteSink, _) =>
           val newState = state.copy(wasteSinks = state.wasteSinks :+ wasteSink)
           orchestrator(instance, newState)
 
         case GarbageCollectionRequest(sourceId, sourceLocation, sourceRef, garbageAmount) =>
           context.log.info("[Collection] received request to collect garbage from Source{}", sourceId)
           val auction = initCollectionAuction(CollectionDetails(garbageAmount, sourceLocation, sourceId, sourceRef), state.garbageCollectors)
-          orchestrator(instance, state.copy(collectionAuctionsInProgress = state.collectionAuctionsInProgress.updated(auction.auctionId, auction)))
+          orchestrator(instance, state.copy(auctionsInProgress = state.auctionsInProgress.updated(auction.auctionId, auction)))
 
         case GarbageDisposalRequest(collectorId, garbageAmount, collectorRef) =>
           context.log.info("[Disposal]  received request to dispose garbage from Collector{}", collectorId)
           val auction = initDisposalAuction(DisposalDetails(garbageAmount, collectorId), collectorRef, state.wasteSinks)
-          orchestrator(instance, state.copy(disposalAuctionsInProgress = state.disposalAuctionsInProgress.updated(auction.auctionId, auction)))
+          orchestrator(instance, state.copy(auctionsInProgress = state.auctionsInProgress.updated(auction.auctionId, auction)))
 
         case GarbageCollectionProposal(auctionId, auctionOffer) =>
           context.log.info("[Collection] Received proposal for auction {} from {}", auctionId, auctionOffer.gcRef)
@@ -58,19 +54,19 @@ object GarbageOrchestrator {
 
         case AuctionTimeout(auctionId) =>
           context.log.info("[Any] Auction timeout {}", auctionId)
-          state.collectionAuctionsInProgress.get(auctionId).orElse(state.disposalAuctionsInProgress.get(auctionId)) match {
+          state.auctionsInProgress.get(auctionId).orElse(state.auctionsInProgress.get(auctionId)) match {
             case Some(auction: CollectionAuction) =>
               resolveCollectionAuction(auction)
-              orchestrator(instance, state.copy(collectionAuctionsInProgress = state.collectionAuctionsInProgress.removed(auctionId)))
+              orchestrator(instance, state.copy(auctionsInProgress = state.auctionsInProgress.removed(auctionId)))
             case Some(auction: DisposalAuction) =>
               resolveDisposalAuction(auction)
-              orchestrator(instance, state.copy(disposalAuctionsInProgress = state.disposalAuctionsInProgress.removed(auctionId)))
+              orchestrator(instance, state.copy(auctionsInProgress = state.auctionsInProgress.removed(auctionId)))
             case None => Behaviors.same
           }
 
-        case GarbageScore(sourceId: Int, garbage_score: Int) =>
-          context.log.info("Waste source with id {} got score {}", sourceId, garbage_score)
-          state.wasteSources.get(sourceId).map(_ ! GarbageScoreSummary(garbage_score))
+        case GarbageScore(sourceId, garbageScore) =>
+          context.log.info("Waste source with id {} got score {}", sourceId, garbageScore)
+          state.wasteSources.get(sourceId).foreach(_ ! GarbageScoreSummary(garbageScore))
           Behaviors.same
       }
     }
@@ -94,27 +90,27 @@ object GarbageOrchestrator {
   }
 
   private def progressCollectionAuction(auctionId: UUID, auctionOffer: CollectionAuctionOffer, state: State, instance: Instance)(implicit context: ActorContext[Command]): Behavior[Command] =
-    state.collectionAuctionsInProgress.get(auctionId) match {
-      case Some(auction) =>
+    state.auctionsInProgress.get(auctionId) match {
+      case Some(auction: CollectionAuction) =>
         val updatedAuction = auction.copy(received = auction.received.appended(auctionOffer))
         if (updatedAuction.received.length == auction.expected) {
           // all offers received
           context.log.info("[Collection] All offers received for auction {}", auctionId)
           updatedAuction.timeoutRef.cancel()
           resolveCollectionAuction(updatedAuction)
-          orchestrator(instance, state.copy(collectionAuctionsInProgress = state.collectionAuctionsInProgress.removed(auctionId)))
+          orchestrator(instance, state.copy(auctionsInProgress = state.auctionsInProgress.removed(auctionId)))
         } else {
-          orchestrator(instance, state.copy(collectionAuctionsInProgress = state.collectionAuctionsInProgress.updated(auctionId, updatedAuction)))
+          orchestrator(instance, state.copy(auctionsInProgress = state.auctionsInProgress.updated(auctionId, updatedAuction)))
         }
-      case None =>
+      case None | Some(_: DisposalAuction) =>
         context.log.info("[Collection] Offer for {} does not match any auction", auctionId)
         auctionOffer.gcRef ! GarbageCollectionRejected(auctionId)
         Behaviors.same
     }
 
   private def progressDisposalAuction(auctionId: UUID, auctionOffer: DisposalAuctionOffer, state: State, instance: Instance)(implicit context: ActorContext[Command]): Behavior[Command] =
-    state.disposalAuctionsInProgress.get(auctionId) match {
-      case Some(auction) =>
+    state.auctionsInProgress.get(auctionId) match {
+      case Some(auction: DisposalAuction) =>
         val updatedAuction = auction.copy(received = auction.received.appended(auctionOffer))
         if (updatedAuction.received.length == auction.expected) {
           // all offers received
@@ -123,12 +119,12 @@ object GarbageOrchestrator {
           if (updatedAuction.received.nonEmpty) {
             resolveDisposalAuction(updatedAuction)
           }
-          orchestrator(instance, state.copy(disposalAuctionsInProgress = state.disposalAuctionsInProgress.removed(auctionId)))
+          orchestrator(instance, state.copy(auctionsInProgress = state.auctionsInProgress.removed(auctionId)))
         } else {
           context.log.info("[Disposal] Received auction offer from {} ", auctionOffer.wasteSink)
-          orchestrator(instance, state.copy(disposalAuctionsInProgress = state.disposalAuctionsInProgress.updated(auctionId, updatedAuction)))
+          orchestrator(instance, state.copy(auctionsInProgress = state.auctionsInProgress.updated(auctionId, updatedAuction)))
         }
-      case None =>
+      case None | Some(_: CollectionAuction) =>
         context.log.info("[Disposal] Offer for {} does not match any auction", auctionId)
         auctionOffer.wasteSink ! GarbageDisposalRejected(auctionId)
         Behaviors.same
@@ -162,11 +158,14 @@ object GarbageOrchestrator {
 
   final case class GarbageCollectorRegistered(garbageCollector: ActorRef[GarbageCollector.Command]) extends Command
 
-  final case class WasteSourceRegistered(wasteSource: ActorRef[WasteSource.Command], sourceId: Int) extends Command
+  final case class WasteSourceRegistered(wasteSource: ActorRef[WasteSource.Command], sourceId: UUID) extends Command
+  final case class WasteSinkRegistered(wasteSink: ActorRef[WasteSink.Command], sinkId: UUID)         extends Command
 
-  final case class GarbageCollectionProposal(auctionId: UUID, auctionOffer: AuctionOffer) extends Command
+  final case class GarbageCollectionProposal(auctionId: UUID, auctionOffer: CollectionAuctionOffer) extends Command
 
-  final case class GarbageScore(sourceId: Int, garbage_score: Int) extends Command
+  final case class GarbageDisposalProposal(auctionId: UUID, auctionOffer: DisposalAuctionOffer) extends Command
+
+  final case class GarbageScore(sourceId: UUID, garbageScore: Int) extends Command
 
   private final case class AuctionTimeout(auctionId: UUID) extends Command
 }
