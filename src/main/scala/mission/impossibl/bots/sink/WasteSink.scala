@@ -3,6 +3,9 @@ package mission.impossibl.bots.sink
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, Behavior}
 import mission.impossibl.bots.orchestrator.GarbageOrchestrator
+import mission.impossibl.bots.orchestrator.GarbageOrchestrator.GarbageScore
+
+import org.apache.commons.math3.distribution.PoissonDistribution
 
 object WasteSink {
   def apply(instance: Instance, processing_power: Float): Behavior[Command] = {
@@ -27,15 +30,28 @@ object WasteSink {
             // Change garbage_packet_id to n, get first n packets and process them
             val garbage_packet = state.garbage_packets.get(garbage_packet_id)
             val processed_garbage = garbage_packet.get.total_mass
+            val garbage_packet_records = garbage_packet.get.records
+            val garbage_score = score_garbage(garbage_packet_records)
+
             context.log.info(
               s"Sink{}: Processed {} kg of garbage.",
               instance.id, processed_garbage
             )
+
+            for (record <- garbage_packet_records) instance.orchestrator ! GarbageOrchestrator.GarbageScore(record.waste_source_id, garbage_score)
+
             sink(instance, State(state.processing_power,
               state.garbage_level - processed_garbage,
               state.garbage_packets.removed(garbage_packet_id)))
+
         }
       }
+    }
+
+  private def score_garbage(records: List[GarbagePacketRecord]): Int = {
+      val scoreDist = new PoissonDistribution(3.0)
+      val score = scoreDist.sample()
+      score
     }
 
   sealed trait Command

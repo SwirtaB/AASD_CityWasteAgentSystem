@@ -21,6 +21,11 @@ object WasteSource {
     Behaviors.receive {
       (context, message) => {
         message match {
+          case AttachOrchestrator(orchestratorId, orchestratorRef) =>
+            context.log.info("Waste Source{} attached to Orchestrator{}", instance.id, orchestratorId)
+            orchestratorRef ! GarbageOrchestrator.WasteSourceRegistered(context.self, instance.id)
+            source(instance.copy(orchestrator = orchestratorRef), state)
+
           case CheckGarbageLevel() =>
             context.log.info("Checking garbage level")
             if (state.collectionTimeout.isEmpty && state.auctionTimeout.isEmpty && state.garbage > DisposalPercentFull * instance.capacity) {
@@ -60,6 +65,10 @@ object WasteSource {
             context.log.info("Collection Timeout")
             context.self ! CheckGarbageLevel()
             source(instance, state.copy(collectionTimeout = None))
+
+          case GarbageScoreSummary(garbage_score) =>
+            context.log.info("Waste Source got its Score")
+            source(instance, state.copy(score = garbage_score))
         }
       }
     }
@@ -76,9 +85,13 @@ object WasteSource {
 
   final case class DisposeGarbage(maxAmount: Int, collectorRef: ActorRef[CollectGarbage]) extends Command
 
+  final case class AttachOrchestrator(orchestratorId: Int, orchestratorRef: ActorRef[GarbageOrchestrator.Command]) extends Command
+
   private final case class CheckGarbageLevel() extends Command
 
   private final case class AuctionTimeout() extends Command
 
   private final case class CollectionTimeout() extends Command
+  
+  final case class GarbageScoreSummary(garbage_score: Int) extends Command
 }
