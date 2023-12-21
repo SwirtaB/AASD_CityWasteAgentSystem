@@ -130,25 +130,25 @@ object GarbageOrchestrator {
         Behaviors.same
     }
 
-  private def resolveCollectionAuction(auction: CollectionAuction)(implicit context: ActorContext[Command]): Unit = {
-    if (auction.received.isEmpty)
-      return
-    val sortedOffers = auction.received.sortBy(-_.when)
-    context.log.info("[Collection] Winning offer for auction {} from {}", auction.auctionId, sortedOffers.head.gcRef)
-    sortedOffers.head.gcRef ! GarbageCollectionAccepted(auction.auctionId, auction.collectionDetails.sourceId, auction.collectionDetails.sourceRef)
-    context.log.info("[Collection] Rejecting offers for auction {} from {}", auction.auctionId, auction.received.drop(1))
-    sortedOffers.drop(1).foreach(_.gcRef ! GarbageCollectionRejected(auction.auctionId))
-  }
+  private def resolveCollectionAuction(auction: CollectionAuction)(implicit context: ActorContext[Command]): Unit =
+    if (auction.received.nonEmpty) {
+      val sortedOffers = auction.received.sortBy(-_.when)
+      context.log.info("[Collection] Winning offer for auction {} from {}", auction.auctionId, sortedOffers.head.gcRef)
+      sortedOffers.head.gcRef ! GarbageCollectionAccepted(auction.auctionId, auction.collectionDetails.sourceId, auction.collectionDetails.sourceRef)
+      context.log.info("[Collection] Rejecting offers for auction {} from {}", auction.auctionId, auction.received.drop(1))
+      sortedOffers.drop(1).foreach(_.gcRef ! GarbageCollectionRejected(auction.auctionId))
+    }
 
-  private def resolveDisposalAuction(auction: DisposalAuction)(implicit context: ActorContext[Command]): Unit = {
+  private def resolveDisposalAuction(auction: DisposalAuction)(implicit context: ActorContext[Command]): Unit =
     // todo proper winning offer choice algorithm
-    context.log.info("[Disposal] Winning offer for auction {} from {}", auction.auctionId, auction.received.head.wasteSink)
-    val winningOffer = auction.received.head
-    winningOffer.wasteSink ! GarbageDisposalAccepted(auction.auctionId)
-    auction.collectorRef ! DisposalAuctionResponse(DisposalPoint(winningOffer.location, winningOffer.wasteSink))
-    context.log.info("[Disposal] Rejecting offers for auction {} from {}", auction.auctionId, auction.received.drop(1))
-    auction.received.drop(1).foreach(_.wasteSink ! GarbageDisposalRejected(auction.auctionId))
-  }
+    if (auction.received.nonEmpty) {
+      context.log.info("[Disposal] Winning offer for auction {} from {}", auction.auctionId, auction.received.head.wasteSink)
+      val winningOffer = auction.received.head
+      winningOffer.wasteSink ! GarbageDisposalAccepted(auction.auctionId)
+      auction.collectorRef ! DisposalAuctionResponse(DisposalPoint(winningOffer.location, winningOffer.wasteSink))
+      context.log.info("[Disposal] Rejecting offers for auction {} from {}", auction.auctionId, auction.received.drop(1))
+      auction.received.drop(1).foreach(_.wasteSink ! GarbageDisposalRejected(auction.auctionId))
+    }
 
   sealed trait Command
 

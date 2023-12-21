@@ -65,26 +65,30 @@ object WasteSink {
           sink(instance, state.copy(garbagePackets = state.garbagePackets.appended(packet)))
 
         case ProcessGarbage() => // simulates garbage processing
-          val garbagePacket = state.garbagePackets.head
-          // shift dist from N(0, 1) to N(efficiency, 1) and convert to discrete number
-          val processedWaste = Utils.sample_normal(state.efficiency, 1)
-          context.log.info(s"Sink{}: Processed {} kg of garbage.", instance.id, processedWaste)
+          state.garbagePackets.headOption match {
+            case Some(garbagePacket: GarbagePacket) => // shift dist from N(0, 1) to N(efficiency, 1) and convert to discrete number
+              val processedWaste = Utils.sample_normal(state.efficiency, 1)
+              context.log.info(s"Sink{}: Processed {} kg of garbage.", instance.id, processedWaste)
 
-          val remainingWaste = garbagePacket.totalMass - processedWaste
-          if (remainingWaste > 0) {
-            val updatedGarbagePacket = GarbagePacket(garbagePacket.records, remainingWaste)
-            sink(instance, State(state.id, state.efficiency, state.garbagePackets.updated(0, updatedGarbagePacket), state.reservedSpace))
-          } else {
-            // remainingWaste <= 0
-            val newHead              = state.garbagePackets(1)
-            val updatedGarbagePacket = GarbagePacket(newHead.records, newHead.totalMass - math.abs(remainingWaste))
+              val remainingWaste = garbagePacket.totalMass - processedWaste
+              if (remainingWaste > 0) {
+                val updatedGarbagePacket = GarbagePacket(garbagePacket.records, remainingWaste)
+                sink(instance, State(state.id, state.efficiency, state.garbagePackets.updated(0, updatedGarbagePacket), state.reservedSpace))
+              } else {
+                // FIXME remainingWaste <= 0
+                // val newHead              = state.garbagePackets(1)
+                // val updatedGarbagePacket = GarbagePacket(newHead.records, newHead.totalMass - math.abs(remainingWaste))
 
-            // TODO garbage score messages
-            // val garbage_score = score_garbage(garbage_packet_records)
-            // for (record <- garbage_packet_records) instance.orchestrator ! GarbageOrchestrator.GarbageScore(record.wasteSourceId, garbage_score)
+                // TODO garbage score messages
+                // val garbage_score = score_garbage(garbage_packet_records)
+                // for (record <- garbage_packet_records) instance.orchestrator ! GarbageOrchestrator.GarbageScore(record.wasteSourceId, garbage_score)
 
-            sink(instance, state.copy(garbagePackets = state.garbagePackets.tail.updated(0, updatedGarbagePacket)))
+                // sink(instance, state.copy(garbagePackets = state.garbagePackets.tail.updated(0, updatedGarbagePacket)))
+                Behaviors.same
+              }
+            case None => Behaviors.same
           }
+
         case ReservationTimeout(auctionId) =>
           val reservations = state.reservedSpace.filterNot(_.auctionId == auctionId) // drop reservation from rejected auction
           sink(instance, state.copy(reservedSpace = reservations))

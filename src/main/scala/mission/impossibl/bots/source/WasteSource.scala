@@ -26,9 +26,10 @@ object WasteSource {
 
         case ProduceGarbage(amount) => // simulate garbage production
           context.log.info(
-            s"New garbage in town! {}, current amount: {}",
+            s"New garbage in town! {}, current amount: {}/{}",
             amount,
-            state.garbage + amount
+            state.garbage + amount,
+            instance.capacity
           )
           val updatedState = state.copy(state.garbage + amount)
           source(instance, checkGarbageLevel(updatedState, instance, context))
