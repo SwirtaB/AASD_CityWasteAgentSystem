@@ -6,17 +6,12 @@ import mission.impossibl.bots.http.MissionApi
 import scala.concurrent.ExecutionContextExecutor
 import scala.concurrent.duration._
 import scala.io.StdIn
-import akka.actor.typed.ActorSystem
 import akka.actor.typed.scaladsl.Behaviors
 import akka.http.scaladsl.Http
-import akka.http.scaladsl.model._
-import akka.http.scaladsl.server.Directives._
-import akka.http.scaladsl.server.Route.seal
-import akka.pattern.AskableActorRef
 
 object MissionImpossiBots extends App {
   implicit val system: ActorSystem[EnvironmentSimulator.Command] = ActorSystem(Behaviors.empty, "main")
-  val environment = system.systemActorOf(EnvironmentSimulator(), "EnvSim")
+  val environment                                                = system.systemActorOf(EnvironmentSimulator(), "EnvSim")
 
   environment ! EnvironmentSimulator.SpawnGarbageOrchestrator()
   environment ! EnvironmentSimulator.SpawnWasteSource(20, (1, 1))
@@ -30,7 +25,7 @@ object MissionImpossiBots extends App {
   system.scheduler.scheduleAtFixedRate(1.second, 1.second)(() => environment ! EnvironmentSimulator.CollectorSimulationTick())
 
   val api           = new MissionApi(environment)
-  val bindingFuture = Http().newServerAt("localhost", 8080).bind(api.routes)
+  val bindingFuture = Http().newServerAt("localhost", 8080).bind(api.routes())
   StdIn.readLine()
   bindingFuture.flatMap(_.unbind()).onComplete(_ => system.terminate())
 }

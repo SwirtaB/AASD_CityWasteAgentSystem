@@ -3,7 +3,7 @@ package mission.impossibl.bots
 import akka.actor.typed.{ActorRef, Behavior}
 import akka.actor.typed.scaladsl.Behaviors
 import mission.impossibl.bots.collector.{GarbageCollector, GarbageCollectorFactory}
-import mission.impossibl.bots.http.EnvironmentReply
+import mission.impossibl.bots.http.AllActors
 import mission.impossibl.bots.orchestrator.{GarbageOrchestrator, GarbageOrchestratorFactory}
 import mission.impossibl.bots.sink.WasteSink.AttachOrchestrator
 import mission.impossibl.bots.sink.{WasteSink, WasteSinkFactory}
@@ -68,7 +68,7 @@ object EnvironmentSimulator {
           Behaviors.same
         case Status(replyTo) =>
           context.log.info("Got asked for status")
-          replyTo ! EnvironmentReply(List.empty)
+          replyTo ! AllActors(sources = state.wasteSources, sinks = state.wasteSinks, orchestrators = state.garbageOrchestrators, collectors = state.garbageCollectors)
           Behaviors.same
       }
     }
@@ -95,5 +95,5 @@ object EnvironmentSimulator {
   final case class SpawnWasteSink(efficiency: Int, storageCapacity: Int, location: (Int, Int)) extends Command
   final case class SpawnGarbageCollector(capacity: Int, location: (Int, Int), speed: Int)      extends Command
   final case class SpawnGarbageOrchestrator()                                                  extends Command
-  final case class Status(replyTo: ActorRef[EnvironmentReply])                                 extends Command
+  final case class Status(replyTo: ActorRef[AllActors])                                        extends Command
 }

@@ -1,8 +1,11 @@
 package mission.impossibl.bots.http
 
+import akka.actor.typed.ActorRef
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
-import mission.impossibl.bots.collector.Garbage
-import mission.impossibl.bots.sink.{GarbagePacket, GarbagePacketRecord}
+import mission.impossibl.bots.collector.{Garbage, GarbageCollector}
+import mission.impossibl.bots.orchestrator.GarbageOrchestrator
+import mission.impossibl.bots.sink.{GarbagePacket, GarbagePacketRecord, WasteSink}
+import mission.impossibl.bots.source.WasteSource
 import spray.json.DefaultJsonProtocol
 
 import java.util.UUID
@@ -11,8 +14,18 @@ import spray.json._
 
 import java.util.concurrent.TimeUnit
 
-final case class EnvironmentReply(
-  sources: List[SourceStatus]
+final case class EnvironmentResponse(
+  sources: List[SourceStatus],
+  sinks: List[SinkStatus],
+  collectors: List[CollectorStatus],
+  orchestrators: List[OrchestratorStatus]
+)
+
+final case class AllActors(
+  sources: List[ActorRef[WasteSource.Status]],
+  sinks: List[ActorRef[WasteSink.Status]],
+  orchestrators: List[ActorRef[GarbageOrchestrator.Command]],
+  collectors: List[ActorRef[GarbageCollector.Status]]
 )
 
 final case class SourceStatus(
@@ -64,13 +77,13 @@ final case class AuctionStatus(
 )
 
 sealed trait PointDetails
-final case class CollectionPoint(
+final case class CollectionDetailsResponse(
   amount: Int,
   location: (Int, Int),
   id: UUID
 ) extends PointDetails
 
-final case class DisposalPoint(
+final case class DisposalDetailsResponse(
   amount: Int,
   id: UUID
 ) extends PointDetails
@@ -94,9 +107,9 @@ trait JsonSupport extends SprayJsonSupport with DefaultJsonProtocol {
     override def write(obj: FiniteDuration): JsValue = JsString(obj.toString())
   }
 
-  implicit val dpf: RootJsonFormat[DisposalPoint]        = jsonFormat2(DisposalPoint.apply)
-  implicit val gprf: RootJsonFormat[GarbagePacketRecord] = jsonFormat3(GarbagePacketRecord.apply)
-  implicit val cpf: RootJsonFormat[CollectionPoint]      = jsonFormat3(CollectionPoint.apply)
+  implicit val dpf: RootJsonFormat[DisposalDetailsResponse]   = jsonFormat2(DisposalDetailsResponse.apply)
+  implicit val gprf: RootJsonFormat[GarbagePacketRecord]      = jsonFormat3(GarbagePacketRecord.apply)
+  implicit val cpf: RootJsonFormat[CollectionDetailsResponse] = jsonFormat3(CollectionDetailsResponse.apply)
 
   implicit val disposalPoint: RootJsonFormat[PointDetails] = new RootJsonFormat[PointDetails] {
     override def read(json: JsValue): PointDetails =
@@ -107,18 +120,18 @@ trait JsonSupport extends SprayJsonSupport with DefaultJsonProtocol {
       }
 
     override def write(obj: PointDetails): JsValue = obj match {
-      case c: CollectionPoint => cpf.write(c)
-      case d: DisposalPoint   => dpf.write(d)
+      case c: CollectionDetailsResponse => cpf.write(c)
+      case d: DisposalDetailsResponse   => dpf.write(d)
     }
   }
 
-  implicit val asf: RootJsonFormat[AuctionStatus]      = jsonFormat5(AuctionStatus.apply)
-  implicit val osf: RootJsonFormat[OrchestratorStatus] = jsonFormat2(OrchestratorStatus.apply)
-  implicit val spef: RootJsonFormat[SourcePathElem]    = jsonFormat3(SourcePathElem.apply)
-  implicit val sosf: RootJsonFormat[SourceStatus]      = jsonFormat7(SourceStatus.apply)
-  implicit val gpf: RootJsonFormat[GarbagePacket]      = jsonFormat2(GarbagePacket.apply)
-  implicit val gf: RootJsonFormat[Garbage]             = jsonFormat2(Garbage.apply)
-  implicit val csf: RootJsonFormat[CollectorStatus]    = jsonFormat8(CollectorStatus.apply)
-  implicit val sisf: RootJsonFormat[SinkStatus]        = jsonFormat6(SinkStatus.apply)
-  implicit val ssf: RootJsonFormat[EnvironmentReply]   = jsonFormat1(EnvironmentReply.apply)
+  implicit val asf: RootJsonFormat[AuctionStatus]       = jsonFormat5(AuctionStatus.apply)
+  implicit val osf: RootJsonFormat[OrchestratorStatus]  = jsonFormat2(OrchestratorStatus.apply)
+  implicit val spef: RootJsonFormat[SourcePathElem]     = jsonFormat3(SourcePathElem.apply)
+  implicit val sosf: RootJsonFormat[SourceStatus]       = jsonFormat7(SourceStatus.apply)
+  implicit val gpf: RootJsonFormat[GarbagePacket]       = jsonFormat2(GarbagePacket.apply)
+  implicit val gf: RootJsonFormat[Garbage]              = jsonFormat2(Garbage.apply)
+  implicit val csf: RootJsonFormat[CollectorStatus]     = jsonFormat8(CollectorStatus.apply)
+  implicit val sisf: RootJsonFormat[SinkStatus]         = jsonFormat6(SinkStatus.apply)
+  implicit val ssf: RootJsonFormat[EnvironmentResponse] = jsonFormat4(EnvironmentResponse.apply)
 }
