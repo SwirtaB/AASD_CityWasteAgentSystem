@@ -105,7 +105,6 @@ object GarbageCollector {
           collector(instance, updatedState.copy(visitedSources = updatedPath, futureSources = state.futureSources.drop(1)))
 
         case Move() =>
-          context.log.info("Move, disposal {}, head source {}, carried {}", state.disposalPoint, state.futureSources.headOption, state.carriedGarbage)
           state.disposalPoint match {
             case Some(DisposalPoint(destination, sink)) =>
               val loc = move(destination, state.currentLocation, instance.speed)
@@ -131,7 +130,6 @@ object GarbageCollector {
                   }
                   collector(instance, state.copy(currentLocation = loc))
                 case None =>
-                  context.log.info("Waiting - I'm at {} with speed {}", state.currentLocation, instance.speed)
                   Behaviors.same
               }
           }
@@ -152,7 +150,6 @@ object GarbageCollector {
             case None => Behaviors.same // action has already timed out and was repeated
           }
         case Status(replyTo) =>
-          context.log.info("Got asked for status")
           replyTo ! CollectorStatus(
             instance.id,
             instance.capacity,

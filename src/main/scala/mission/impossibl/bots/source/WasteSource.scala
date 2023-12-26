@@ -60,7 +60,6 @@ object WasteSource {
           context.log.info("Waste Source got its Score")
           source(instance, state.copy(score = garbage_score))
         case Status(replyTo) =>
-          context.log.info("Got asked for status")
           replyTo ! SourceStatus(instance.id, instance.capacity, instance.location, state.garbage, state.score, state.collectionTimeout.isDefined, state.auctionTimeout.isDefined)
           Behaviors.same
       }

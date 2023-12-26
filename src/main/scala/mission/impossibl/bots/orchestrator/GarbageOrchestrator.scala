@@ -71,7 +71,6 @@ object GarbageOrchestrator {
           Behaviors.same
 
         case Status(replyTo) =>
-          context.log.info("Got asked for status")
           replyTo ! OrchestratorStatus(
             instance.id,
             state.auctionsInProgress.values.map {

@@ -80,7 +80,6 @@ object WasteSink {
           sink(instance, state.copy(reservedSpace = reservations))
 
         case Status(replyTo) =>
-          context.log.info("Got asked for status")
           replyTo ! SinkStatus(instance.id, state.efficiency, instance.location, instance.storageCapacity, state.garbagePackets, state.reservedSpace.map(_.wasteMass).sum)
           Behaviors.same
       }

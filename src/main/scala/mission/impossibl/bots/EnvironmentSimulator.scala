@@ -67,7 +67,6 @@ object EnvironmentSimulator {
           }
           Behaviors.same
         case Status(replyTo) =>
-          context.log.info("Got asked for status")
           replyTo ! AllActors(sources = state.wasteSources, sinks = state.wasteSinks, orchestrators = state.garbageOrchestrators, collectors = state.garbageCollectors)
           Behaviors.same
       }
