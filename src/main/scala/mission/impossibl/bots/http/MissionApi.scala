@@ -26,12 +26,19 @@ class MissionApi(val environment: ActorRef[EnvironmentSimulator.Command])(implic
           case Success(value) => complete(value)
         }
       }
-    } ~ path("collector/spawn") {
-      post {
-        entity(as[CollectorParams]) { params =>
-          spawnCollector(params)
-          complete(Created)
+    } ~ pathPrefix("collector") {
+      pathPrefix("spawn") {
+        post {
+          entity(as[CollectorParams]) { params =>
+            spawnCollector(params)
+            complete(Created)
+          }
         }
+      }
+
+    } ~ post {
+      path(Remaining) { path =>
+        complete(path)
       }
     }
   private def simulationState()(implicit ec: ExecutionContext): Future[EnvironmentResponse] =
