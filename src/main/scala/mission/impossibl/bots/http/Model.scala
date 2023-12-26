@@ -88,11 +88,17 @@ final case class DisposalDetailsResponse(
   id: UUID
 ) extends PointDetails
 
+final case class CollectorParams (
+                                   capacity: Int,
+                                   location: Point,
+                                   speed: Int
+                                 )
+final case class Point(x: Int, y: Int)
 trait JsonSupport extends SprayJsonSupport with DefaultJsonProtocol {
   implicit val uuidFormat: RootJsonFormat[UUID] = new RootJsonFormat[UUID] {
     override def read(json: JsValue): UUID = json match {
       case JsString(uuid) => UUID.fromString(uuid)
-      case value          => throw new IllegalArgumentException("Cannot make uuid from" + value)
+      case value          => throw new IllegalArgumentException("Cannot make uuid from " + value)
     }
 
     override def write(obj: UUID): JsValue = JsString(obj.toString)
@@ -134,4 +140,6 @@ trait JsonSupport extends SprayJsonSupport with DefaultJsonProtocol {
   implicit val csf: RootJsonFormat[CollectorStatus]     = jsonFormat8(CollectorStatus.apply)
   implicit val sisf: RootJsonFormat[SinkStatus]         = jsonFormat6(SinkStatus.apply)
   implicit val ssf: RootJsonFormat[EnvironmentResponse] = jsonFormat4(EnvironmentResponse.apply)
+  implicit val pf: RootJsonFormat[Point] = jsonFormat2(Point.apply)
+  implicit val clpf: RootJsonFormat[CollectorParams] = jsonFormat3(CollectorParams.apply)
 }

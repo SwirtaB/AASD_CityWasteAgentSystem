@@ -7,7 +7,7 @@ import mission.impossibl.bots.EnvironmentSimulator
 import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration.DurationInt
 import akka.actor.typed.scaladsl.AskPattern.{Askable, schedulerFromActorSystem}
-import akka.http.scaladsl.model.StatusCodes.InternalServerError
+import akka.http.scaladsl.model.StatusCodes.{InternalServerError, Created}
 
 import scala.util.{Failure, Success}
 import akka.http.scaladsl.server.{Directives, Route}
@@ -15,8 +15,9 @@ import mission.impossibl.bots.collector.GarbageCollector
 import mission.impossibl.bots.orchestrator.GarbageOrchestrator
 import mission.impossibl.bots.sink.WasteSink
 import mission.impossibl.bots.source.WasteSource
-class MissionApi(val environment: ActorRef[EnvironmentSimulator.Status])(implicit system: ActorSystem[_]) extends JsonSupport with Directives {
 
+class MissionApi(val environment: ActorRef[EnvironmentSimulator.Command])(implicit system: ActorSystem[_]) extends JsonSupport with Directives {
+  implicit val timeout: Timeout = 1.second
   def routes()(implicit ec: ExecutionContext): Route =
     path("status") {
       get {
@@ -25,10 +26,15 @@ class MissionApi(val environment: ActorRef[EnvironmentSimulator.Status])(implici
           case Success(value) => complete(value)
         }
       }
+    } ~ path("collector/spawn") {
+      post {
+        entity(as[CollectorParams]) { params =>
+          spawnCollector(params)
+          complete(Created)
+        }
+      }
     }
-  private def simulationState()(implicit ec: ExecutionContext): Future[EnvironmentResponse] = {
-    implicit val timeout: Timeout = 1.second
-
+  private def simulationState()(implicit ec: ExecutionContext): Future[EnvironmentResponse] =
     environment.ask(ref => EnvironmentSimulator.Status(ref)).flatMap { x =>
       val sinkStatusesFuture          = Future.sequence(x.sinks.map(sink => sink.ask(ref => WasteSink.Status(ref))))
       val sourceStatusesFuture        = Future.sequence(x.sources.map(source => source.ask(ref => WasteSource.Status(ref))))
@@ -41,5 +47,7 @@ class MissionApi(val environment: ActorRef[EnvironmentSimulator.Status])(implici
         orchestratorStatuses <- orchestratorsStatusesFuture
       } yield EnvironmentResponse(sourceStatuses, sinkStatuses, collectorStatuses, orchestratorStatuses)
     }
-  }
+
+  private def spawnCollector(params: CollectorParams): Unit =
+    environment ! EnvironmentSimulator.SpawnGarbageCollector(params.capacity, (params.location.x, params.location.y), params.speed)
 }
