@@ -3,6 +3,7 @@ package mission.impossibl.bots.collector
 import akka.actor.typed.scaladsl.{ActorContext, Behaviors}
 import akka.actor.typed.{ActorRef, Behavior}
 import mission.impossibl.bots.collector.GarbageCollector.Move
+import mission.impossibl.bots.http.{CollectorStatus, SourcePathElem}
 import mission.impossibl.bots.orchestrator.GarbageOrchestrator.{GarbageCollectionProposal, GarbageDisposalRequest}
 import mission.impossibl.bots.orchestrator.{CollectionAuctionOffer, GarbageOrchestrator}
 import mission.impossibl.bots.sink.{GarbagePacket, GarbagePacketRecord}
@@ -104,7 +105,6 @@ object GarbageCollector {
           collector(instance, updatedState.copy(visitedSources = updatedPath, futureSources = state.futureSources.drop(1)))
 
         case Move() =>
-          context.log.info("Move, disposal {}, head source {}, carried {}", state.disposalPoint, state.futureSources.headOption, state.carriedGarbage)
           state.disposalPoint match {
             case Some(DisposalPoint(destination, sink)) =>
               val loc = move(destination, state.currentLocation, instance.speed)
@@ -130,7 +130,6 @@ object GarbageCollector {
                   }
                   collector(instance, state.copy(currentLocation = loc))
                 case None =>
-                  context.log.info("Waiting - I'm at {} with speed {}", state.currentLocation, instance.speed)
                   Behaviors.same
               }
           }
@@ -150,6 +149,18 @@ object GarbageCollector {
               collector(instance, updatedState)
             case None => Behaviors.same // action has already timed out and was repeated
           }
+        case Status(replyTo) =>
+          replyTo ! CollectorStatus(
+            instance.id,
+            instance.capacity,
+            state.currentLocation,
+            state.carriedGarbage,
+            state.visitedSources.map(s => SourcePathElem(s.location, s.amount, s.id)),
+            state.futureSources.map(s => SourcePathElem(s.location, s.amount, s.id)),
+            state.ongoingCollectionAuctions,
+            state.disposalPoint.map(_.location)
+          )
+          Behaviors.same
       }
     }
 
@@ -214,4 +225,7 @@ object GarbageCollector {
   final case class DisposalAuctionTimeout() extends Command
 
   final case class DisposalAuctionResponse(disposalPoint: DisposalPoint) extends Command
+
+  final case class Status(replyTo: ActorRef[CollectorStatus]) extends Command
+
 }

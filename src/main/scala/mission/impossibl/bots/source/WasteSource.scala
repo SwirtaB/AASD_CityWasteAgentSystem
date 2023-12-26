@@ -3,6 +3,7 @@ package mission.impossibl.bots.source
 import akka.actor.typed.scaladsl.{ActorContext, Behaviors}
 import akka.actor.typed.{ActorRef, Behavior}
 import mission.impossibl.bots.collector.GarbageCollector.CollectGarbage
+import mission.impossibl.bots.http.SourceStatus
 import mission.impossibl.bots.orchestrator.GarbageOrchestrator
 
 import java.util.UUID
@@ -58,6 +59,9 @@ object WasteSource {
         case GarbageScoreSummary(garbage_score) =>
           context.log.info("Waste Source got its Score")
           source(instance, state.copy(score = garbage_score))
+        case Status(replyTo) =>
+          replyTo ! SourceStatus(instance.id, instance.capacity, instance.location, state.garbage, state.score, state.collectionTimeout.isDefined, state.auctionTimeout.isDefined)
+          Behaviors.same
       }
     }
 
@@ -89,4 +93,7 @@ object WasteSource {
   private final case class CollectionTimeout() extends Command
 
   final case class GarbageScoreSummary(garbage_score: Int) extends Command
+
+  final case class Status(replyTo: ActorRef[SourceStatus]) extends Command
+
 }

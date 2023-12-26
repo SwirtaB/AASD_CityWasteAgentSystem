@@ -4,6 +4,7 @@ import akka.actor.typed.scaladsl.{ActorContext, Behaviors}
 import akka.actor.typed.{ActorRef, Behavior}
 import mission.impossibl.bots.collector.{DisposalPoint, GarbageCollector}
 import mission.impossibl.bots.collector.GarbageCollector.{DisposalAuctionResponse, GarbageCollectionAccepted, GarbageCollectionRejected}
+import mission.impossibl.bots.http.{AuctionStatus, CollectionDetailsResponse, DisposalDetailsResponse, OrchestratorStatus}
 import mission.impossibl.bots.sink.WasteSink
 import mission.impossibl.bots.sink.WasteSink.{GarbageDisposalAccepted, GarbageDisposalRejected}
 import mission.impossibl.bots.source.WasteSource
@@ -67,6 +68,31 @@ object GarbageOrchestrator {
         case GarbageScore(sourceId, garbageScore) =>
           context.log.info("Waste source with id {} got score {}", sourceId, garbageScore)
           state.wasteSources.get(sourceId).foreach(_ ! GarbageScoreSummary(garbageScore))
+          Behaviors.same
+
+        case Status(replyTo) =>
+          replyTo ! OrchestratorStatus(
+            instance.id,
+            state.auctionsInProgress.values.map {
+              case DisposalAuction(uuid, expected, received, _, details, _) =>
+                AuctionStatus(
+                  "Disposal",
+                  uuid,
+                  expected,
+                  received.map(d => Left(d.location)),
+                  DisposalDetailsResponse(details.garbageAmount, details.collectorId)
+                )
+              case CollectionAuction(uuid, expected, received, _, details) =>
+                AuctionStatus(
+                  "Disposal",
+                  uuid,
+                  expected,
+                  received.map(d => Right(d.when)),
+                  CollectionDetailsResponse(details.garbageAmount, details.location, details.sourceId)
+                )
+
+            }.toList
+          )
           Behaviors.same
       }
     }
@@ -168,4 +194,6 @@ object GarbageOrchestrator {
   final case class GarbageScore(sourceId: UUID, garbageScore: Int) extends Command
 
   private final case class AuctionTimeout(auctionId: UUID) extends Command
+
+  final case class Status(replyTo: ActorRef[OrchestratorStatus]) extends Command
 }

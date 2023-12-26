@@ -4,6 +4,7 @@ import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, Behavior}
 import mission.impossibl.bots.orchestrator.{DisposalAuctionOffer, GarbageOrchestrator}
 import mission.impossibl.bots.Utils
+import mission.impossibl.bots.http.SinkStatus
 import mission.impossibl.bots.orchestrator.GarbageOrchestrator.GarbageDisposalProposal
 import org.apache.commons.math3.distribution.PoissonDistribution
 
@@ -66,8 +67,8 @@ object WasteSink {
 
         case ProcessGarbage() => // simulates garbage processing
           state.garbagePackets.headOption match {
-            case Some(garbagePacket: GarbagePacket) => // shift dist from N(0, 1) to N(efficiency, 1) and convert to discrete number
-              val wasteToProcess = Utils.sample_normal(state.efficiency, 1)
+            case Some(_) => // shift dist from N(0, 1) to N(efficiency, 1) and convert to discrete number
+              val wasteToProcess                          = Utils.sample_normal(state.efficiency, 1)
               val (updatedGarbagePackets, processedWaste) = processGarbageTraverse(wasteToProcess, state.garbagePackets)
               context.log.info(s"Sink{}: Processed {} kg of garbage.", instance.id, processedWaste)
               sink(instance, state.copy(garbagePackets = updatedGarbagePackets))
@@ -78,6 +79,9 @@ object WasteSink {
           val reservations = state.reservedSpace.filterNot(_.auctionId == auctionId) // drop reservation from rejected auction
           sink(instance, state.copy(reservedSpace = reservations))
 
+        case Status(replyTo) =>
+          replyTo ! SinkStatus(instance.id, state.efficiency, instance.location, instance.storageCapacity, state.garbagePackets, state.reservedSpace.map(_.wasteMass).sum)
+          Behaviors.same
       }
 
     }
@@ -85,7 +89,7 @@ object WasteSink {
   private def calcEmptySpace(garbagePackets: List[GarbagePacket], reservations: List[Reservation], capacity: Int): Int =
     capacity - reservations.map(_.wasteMass).sum - garbagePackets.map(_.totalMass).sum
 
-  private def processGarbageTraverse(processedWaste: Int, garbagePackets: List[GarbagePacket]): (List[GarbagePacket], Int) = {
+  private def processGarbageTraverse(processedWaste: Int, garbagePackets: List[GarbagePacket]): (List[GarbagePacket], Int) =
     garbagePackets.headOption match {
       case Some(garbagePacket: GarbagePacket) =>
         val remainingWaste = garbagePacket.totalMass - processedWaste
@@ -101,7 +105,6 @@ object WasteSink {
         }
       case None => (List.empty, 0)
     }
-  }
 
   private def score_garbage(records: List[GarbagePacketRecord]): Int = {
     // FIXME You should use different distribution since Poisson models number of events in time period.
@@ -126,5 +129,7 @@ object WasteSink {
   private final case class ReservationTimeout(auctionId: UUID) extends Command
 
   final case class AttachOrchestrator(orchestratorId: Int, orchestratorRef: ActorRef[GarbageOrchestrator.Command]) extends Command
+
+  final case class Status(replyTo: ActorRef[SinkStatus]) extends Command
 
 }
