@@ -17,9 +17,9 @@ MAX_X = 25
 UNIT_SIZE = min(WINDOW_WIDTH / MAX_X, WINDOW_HEIGHT / MAX_Y)
 SMOOTHING_FACTOR = 0.1
 GRASS_GREEN = (65,152,10)
-waste_source_img = load_image("waste_source.jpg", 15.0)
-garbage_collector_img = load_image("garbage_collector.jpg", 15.0)
-waste_sink_img = load_image("waste_sink.jpg", 15.0)
+waste_source_img = load_image("waste_source.png", 7.0)
+garbage_collector_img = load_image("garbage_collector.png", 5.0)
+waste_sink_img = load_image("waste_sink.jpg", 10.0)
 
 
 @dataclass
@@ -36,15 +36,44 @@ class Object:
     def draw(self, screen):
         screen.blit(self.image, (self.position.x * UNIT_SIZE, self.position.y * UNIT_SIZE))
 
+
+class WasteSource(Object):
+    def __init__(self, image, position: Point, garbage: int, capacity: int):
+        super().__init__(image, position)
+        self.garbage = garbage
+        self.capacity = capacity
+
+    def draw(self, screen):
+        super().draw(screen)
+        font = pygame.font.Font(None, 36)
+        text = f"{self.garbage}/{self.capacity}"
+        text_surface = font.render(text, True, (255, 0, 0))
+        screen.blit(text_surface, (self.position.x * UNIT_SIZE, self.position.y * UNIT_SIZE))
+
+
+class GarbageCollector(Object):
+    def __init__(self, image, position: Point, garbage: int, capacity: int):
+        super().__init__(image, position)
+        self.garbage = garbage
+        self.capacity = capacity
+
+    def draw(self, screen):
+        super().draw(screen)
+        font = pygame.font.Font(None, 36)
+        text = f"{self.garbage}/{self.capacity}"
+        text_surface = font.render(text, True, (255, 0, 0))
+        screen.blit(text_surface, (self.position.x * UNIT_SIZE, self.position.y * UNIT_SIZE))
+
+
 class ObjectFactory:
-    def create_waste_source(self, position: Point):
-        return Object(waste_source_img, position)
+    def create_waste_source(self, position: Point, garbage: int, capacity: int):
+        return WasteSource(waste_source_img, position, garbage, capacity)
 
     def create_waste_sink(self, position: Point):
         return Object(waste_sink_img, position)
 
-    def create_garbage_collector(self, position: Point):
-        return Object(garbage_collector_img, position)
+    def create_garbage_collector(self, position: Point, garbage: int, capacity: int):
+        return GarbageCollector(garbage_collector_img, position, garbage, capacity)
 
 object_factory = ObjectFactory()
 
@@ -54,7 +83,6 @@ pygame.init()
 screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
 clock = pygame.time.Clock()
 running = True
-
 
 elapsed_time = 0
 state = None
@@ -81,9 +109,17 @@ while running:
     # RENDER YOUR GAME HERE
     if state:
         for collector_state in state["collectors"]:
-            object_factory.create_garbage_collector(Point(*collector_state["location"])).draw(screen)
+            object_factory.create_garbage_collector(
+                Point(*collector_state["location"]),
+                collector_state["garbageLevel"],
+                collector_state["capacity"],
+            ).draw(screen)
         for source in state["sources"]:
-            object_factory.create_waste_source(Point(*source["location"])).draw(screen)
+            object_factory.create_waste_source(
+                Point(*source["location"]),
+                source["garbageLevel"],
+                source["capacity"]
+            ).draw(screen)
         for sink in state["sinks"]:
             object_factory.create_waste_sink(Point(*sink["location"])).draw(screen)
 
