@@ -36,6 +36,24 @@ class MissionApi(val environment: ActorRef[EnvironmentSimulator.Command])(implic
         }
       }
 
+    } ~ pathPrefix("source") {
+      pathPrefix("spawn") {
+        post {
+          entity(as[WasteSourceParams]) { params =>
+            spawnWasteSource(params)
+            complete(Created)
+          }
+        }
+      }
+    } ~ pathPrefix("sink") {
+      pathPrefix("spawn")  {
+        post {
+          entity(as[WasteSinkParams]) { params =>
+            spawnWasteSink(params)
+            complete(Created)
+          }
+        }
+      }
     } ~ post {
       path(Remaining) { path =>
         complete(path)
@@ -57,4 +75,10 @@ class MissionApi(val environment: ActorRef[EnvironmentSimulator.Command])(implic
 
   private def spawnCollector(params: CollectorParams): Unit =
     environment ! EnvironmentSimulator.SpawnGarbageCollector(params.capacity, (params.location.x, params.location.y), params.speed)
+
+  private def spawnWasteSource(params: WasteSourceParams): Unit =
+    environment ! EnvironmentSimulator.SpawnWasteSource(params.capacity, (params.location.x, params.location.y))
+
+  private def spawnWasteSink(params: WasteSinkParams): Unit =
+    environment ! EnvironmentSimulator.SpawnWasteSink(params.efficiency, params.storageCapacity, (params.location.x, params.location.y))
 }

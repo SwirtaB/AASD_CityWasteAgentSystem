@@ -93,6 +93,18 @@ final case class CollectorParams (
                                    location: Point,
                                    speed: Int
                                  )
+
+final case class WasteSourceParams(
+                                  capacity: Int,
+                                  location: Point
+                                  )
+
+final case class WasteSinkParams(
+                                efficiency: Int,
+                                storageCapacity: Int,
+                                location: Point
+                                )
+
 final case class Point(x: Int, y: Int)
 trait JsonSupport extends SprayJsonSupport with DefaultJsonProtocol {
   implicit val uuidFormat: RootJsonFormat[UUID] = new RootJsonFormat[UUID] {
@@ -142,4 +154,6 @@ trait JsonSupport extends SprayJsonSupport with DefaultJsonProtocol {
   implicit val ssf: RootJsonFormat[EnvironmentResponse] = jsonFormat4(EnvironmentResponse.apply)
   implicit val pf: RootJsonFormat[Point] = jsonFormat2(Point.apply)
   implicit val clpf: RootJsonFormat[CollectorParams] = jsonFormat3(CollectorParams.apply)
+  implicit val wsrcpf: RootJsonFormat[WasteSourceParams] = jsonFormat2(WasteSourceParams.apply)
+  implicit val wskpf: RootJsonFormat[WasteSinkParams] = jsonFormat3(WasteSinkParams.apply)
 }
