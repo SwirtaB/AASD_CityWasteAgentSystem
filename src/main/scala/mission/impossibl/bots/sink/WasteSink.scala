@@ -69,7 +69,7 @@ object WasteSink {
           state.garbagePackets.headOption match {
             case Some(_) => // shift dist from N(0, 1) to N(efficiency, 1) and convert to discrete number
               val wasteToProcess                          = Utils.sample_normal(state.efficiency, 1)
-              val (updatedGarbagePackets, processedWaste) = processGarbageTraverse(wasteToProcess, state.garbagePackets)
+              val (updatedGarbagePackets, processedWaste) = processGarbageTraverse(instance.orchestrator, wasteToProcess, state.garbagePackets)
               context.log.info(s"Sink{}: Processed {} kg of garbage.", instance.id, processedWaste)
               sink(instance, state.copy(garbagePackets = updatedGarbagePackets))
             case None => Behaviors.same
@@ -89,7 +89,7 @@ object WasteSink {
   private def calcEmptySpace(garbagePackets: List[GarbagePacket], reservations: List[Reservation], capacity: Int): Int =
     capacity - reservations.map(_.wasteMass).sum - garbagePackets.map(_.totalMass).sum
 
-  private def processGarbageTraverse(processedWaste: Int, garbagePackets: List[GarbagePacket]): (List[GarbagePacket], Int) =
+  private def processGarbageTraverse(orchestratorRef: ActorRef[GarbageOrchestrator.Command], processedWaste: Int, garbagePackets: List[GarbagePacket]): (List[GarbagePacket], Int) =
     garbagePackets.headOption match {
       case Some(garbagePacket: GarbagePacket) =>
         val remainingWaste = garbagePacket.totalMass - processedWaste
@@ -97,22 +97,15 @@ object WasteSink {
           val updatedGarbagePacket = GarbagePacket(garbagePacket.records, remainingWaste)
           (garbagePackets.updated(0, updatedGarbagePacket), processedWaste)
         } else {
-          // TODO garbage score messages
-          // val garbage_score = score_garbage(garbage_packet_records)
-          // for (record <- garbage_packet_records) instance.orchestrator ! GarbageOrchestrator.GarbageScore(record.wasteSourceId, garbage_score)
-          val result = processGarbageTraverse(math.abs(remainingWaste), garbagePackets.tail)
+          val score = Utils.sample_normal(0, 10)
+          for (packet <- garbagePackets)
+            for (packetRecord <- packet.records)
+              orchestratorRef ! GarbageOrchestrator.GarbageScore(packetRecord.wasteSourceId, score)
+          val result = processGarbageTraverse(orchestratorRef, math.abs(remainingWaste), garbagePackets.tail)
           (result._1, result._2 + garbagePacket.totalMass)
         }
       case None => (List.empty, 0)
     }
-
-  private def score_garbage(records: List[GarbagePacketRecord]): Int = {
-    // FIXME You should use different distribution since Poisson models number of events in time period.
-    // Imo normal dist will be good enough (ofc you should cast results to int)
-    val scoreDist = new PoissonDistribution(3.0)
-    val score     = scoreDist.sample()
-    score
-  }
 
   sealed trait Command
 
