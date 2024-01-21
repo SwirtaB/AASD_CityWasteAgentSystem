@@ -3,11 +3,14 @@ package mission.impossibl.bots
 import scala.util.Random
 
 object Utils {
-  def sample_normal(mean: Int, sigma: Int): Int = {
+  def sampleNormal(mean: Int, sigma: Int): Int = {
     math.round(Random.nextGaussian() * sigma + mean).toInt
   }
-  def sample_normal(mean: Float, sigma: Float): Float = {
+  def sampleNormal(mean: Float, sigma: Float): Float = {
     (Random.nextGaussian() * sigma + mean).toFloat
   }
+
+  def dist(destination: (Int, Int), location: (Int, Int)): Int =
+    math.abs(destination._1 - location._1) + math.abs(destination._2 - location._2)
 }
 

@@ -15,13 +15,16 @@ object MissionImpossiBots extends App {
 
   environment ! EnvironmentSimulator.SpawnGarbageOrchestrator()
   environment ! EnvironmentSimulator.SpawnWasteSource(20, (1, 1))
+  environment ! EnvironmentSimulator.SpawnWasteSource(10, (12, 1))
+  environment ! EnvironmentSimulator.SpawnWasteSource(15, (1, 10))
+  environment ! EnvironmentSimulator.SpawnWasteSource(20, (5, 5))
   environment ! EnvironmentSimulator.SpawnWasteSink(100, 100, (20, 20))
   environment ! EnvironmentSimulator.SpawnGarbageCollector(30, (5, 5), 5)
   environment ! EnvironmentSimulator.SpawnGarbageCollector(30, (5, 5), 3)
 
   implicit val ec: ExecutionContextExecutor = system.executionContext
-  system.scheduler.scheduleAtFixedRate(10.seconds, 10.seconds)(() => environment ! EnvironmentSimulator.SourceSimulationTick())
-  system.scheduler.scheduleAtFixedRate(10.seconds, 10.seconds)(() => environment ! EnvironmentSimulator.SinkSimulationTick())
+  system.scheduler.scheduleAtFixedRate(2.seconds, 2.seconds)(() => environment ! EnvironmentSimulator.SourceSimulationTick())
+  system.scheduler.scheduleAtFixedRate(2.seconds, 2.seconds)(() => environment ! EnvironmentSimulator.SinkSimulationTick())
   system.scheduler.scheduleAtFixedRate(1.second, 1.second)(() => environment ! EnvironmentSimulator.CollectorSimulationTick())
 
   val api           = new MissionApi(environment)
