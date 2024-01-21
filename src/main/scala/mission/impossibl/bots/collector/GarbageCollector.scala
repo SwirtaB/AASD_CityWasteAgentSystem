@@ -19,7 +19,6 @@ object GarbageCollector {
   private val DisposalPercentFull       = 0.95
   private val DisposalAuctionTimeoutVal = 10.seconds
 
-  // todo: exchange garbage with sink
   def apply(instance: Instance, initialLocation: (Int, Int)): Behavior[Command] =
     collector(instance, State(initialLocation))
 
