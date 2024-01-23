@@ -10,7 +10,6 @@ final case class Garbage(amount: Int)
 
 final case class Instance(id: UUID, location: (Int, Int), storageCapacity: Int, orchestrator: ActorRef[GarbageOrchestrator.Command])
 
-//todo waste type?
 final case class GarbagePacketRecord(wasteSourceId: UUID, wasteType: Int = 0, wasteMass: Int)
 
 final case class GarbagePacket(records: List[GarbagePacketRecord], totalMass: Int)

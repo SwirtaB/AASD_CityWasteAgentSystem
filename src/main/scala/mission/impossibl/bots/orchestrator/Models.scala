@@ -48,12 +48,14 @@ final case class CollectionDetails(
 
 final case class DisposalDetails(
   garbageAmount: Int,
-  collectorId: UUID
+  collectorId: UUID,
+  location: (Int, Int)
 )
 
 final case class CollectionAuctionOffer(
-  gcRef: ActorRef[GarbageCollector.Command],
-  when: FiniteDuration
+                                         collectorRef: ActorRef[GarbageCollector.Command],
+                                         estimatedArrival: FiniteDuration,
+                                         capacity: Int
 )
 
 final case class DisposalAuctionOffer(wasteSink: ActorRef[WasteSink.Command], location: (Int, Int))

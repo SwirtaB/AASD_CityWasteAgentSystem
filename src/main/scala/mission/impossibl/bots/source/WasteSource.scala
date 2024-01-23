@@ -48,12 +48,12 @@ object WasteSource {
 
         case GarbageCollectionInfo(collectorId, estimatedArrival) =>
           context.log.info("Collector {} will arrive in {}", collectorId, estimatedArrival)
-          state.auctionTimeout.map(_.cancel()) // todo maybe one timeout could suffice for both
+          state.auctionTimeout.map(_.cancel())
           val collectionTimeout = state.collectionTimeout.getOrElse(context.scheduleOnce(estimatedArrival + LatenessTolerance, context.self, CollectionTimeout()))
           source(instance, state.copy(collectionTimeout = Some(collectionTimeout), estimatedCollectorArrival = Some(estimatedArrival), auctionTimeout = None))
 
         case CollectionTimeout() =>
-          context.log.info("Collection Timeout")
+          context.log.warn("Collection Timeout")
           source(instance, checkGarbageLevel(state.copy(collectionTimeout = None), instance, context))
 
         case GarbageScoreSummary(garbage_score) =>

@@ -22,12 +22,12 @@ object WasteSink {
     Behaviors.receive { (context, message) =>
       message match {
         case AttachOrchestrator(orchestratorId, orchestratorRef) =>
-          context.log.info("Sink{} attached to Orchestrator{}", instance.id, orchestratorId)
+          context.log.info("Sink {} attached to Orchestrator {}", instance.id, orchestratorId)
           orchestratorRef ! GarbageOrchestrator.WasteSinkRegistered(context.self, state.id)
           sink(instance.copy(orchestrator = orchestratorRef), state)
 
         case GarbageDisposalCallForProposal(auctionId, collectorId, garbageAmount) =>
-          context.log.info("Received Garbage Disposal CFP from Collector{} for {} kg of garbage", collectorId, garbageAmount)
+          context.log.info("Received Garbage Disposal CFP {} from Collector{} for {} kg of garbage", auctionId, collectorId, garbageAmount)
           val emptySpace = calcEmptySpace(state.garbagePackets, state.reservedSpace, instance.storageCapacity)
           if (emptySpace >= garbageAmount) {
             val auctionOffer = DisposalAuctionOffer(context.self, instance.location)
@@ -36,6 +36,7 @@ object WasteSink {
             val timeout = context.scheduleOnce(AuctionTimeoutVal, context.self, ReservationTimeout(auctionId))
             sink(instance, state.copy(reservedSpace = state.reservedSpace.appended(Reservation(auctionId, collectorId, garbageAmount, timeout))))
           } else {
+            context.log.info("Ignoring CFP {}", auctionId)
             Behaviors.same
           }
 
@@ -68,9 +69,9 @@ object WasteSink {
         case ProcessGarbage() => // simulates garbage processing
           state.garbagePackets.headOption match {
             case Some(_) => // shift dist from N(0, 1) to N(efficiency, 1) and convert to discrete number
-              val wasteToProcess                          = Utils.sample_normal(state.efficiency, 1)
+              val wasteToProcess                          = Utils.sampleNormal(state.efficiency, 1)
               val (updatedGarbagePackets, processedWaste) = processGarbageTraverse(instance.orchestrator, wasteToProcess, state.garbagePackets)
-              context.log.info(s"Sink{}: Processed {} kg of garbage.", instance.id, processedWaste)
+              context.log.info(s"Processed {} kg of garbage.", processedWaste)
               sink(instance, state.copy(garbagePackets = updatedGarbagePackets))
             case None => Behaviors.same
           }
@@ -97,7 +98,7 @@ object WasteSink {
           val updatedGarbagePacket = GarbagePacket(garbagePacket.records, remainingWaste)
           (garbagePackets.updated(0, updatedGarbagePacket), processedWaste)
         } else {
-          val score = Utils.sample_normal(0, 10)
+          val score = Utils.sampleNormal(0, 10)
           for (packet <- garbagePackets)
             for (packetRecord <- packet.records)
               orchestratorRef ! GarbageOrchestrator.GarbageScore(packetRecord.wasteSourceId, score)
