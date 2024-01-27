@@ -51,6 +51,20 @@ class WasteSource(Object):
         screen.blit(text_surface, (self.position.x * UNIT_SIZE, self.position.y * UNIT_SIZE))
 
 
+class WasteSink(Object):
+    def __init__(self, image, position: Point, totalReserved: int, capacity: int):
+        super().__init__(image, position)
+        self.totalReserved = totalReserved 
+        self.capacity = capacity
+
+    def draw(self, screen):
+        super().draw(screen)
+        font = pygame.font.Font(None, 36)
+        text = f"{self.totalReserved}/{self.capacity}"
+        text_surface = font.render(text, True, (255, 0, 0))
+        screen.blit(text_surface, (self.position.x * UNIT_SIZE, self.position.y * UNIT_SIZE))
+
+
 class GarbageCollector(Object):
     def __init__(self, image, position: Point, garbage: int, capacity: int):
         super().__init__(image, position)
@@ -69,8 +83,8 @@ class ObjectFactory:
     def create_waste_source(self, position: Point, garbage: int, capacity: int):
         return WasteSource(waste_source_img, position, garbage, capacity)
 
-    def create_waste_sink(self, position: Point):
-        return Object(waste_sink_img, position)
+    def create_waste_sink(self, position: Point, totalReserved: int, capacity: int):
+        return WasteSink(waste_sink_img, position, totalReserved, capacity)
 
     def create_garbage_collector(self, position: Point, garbage: int, capacity: int):
         return GarbageCollector(garbage_collector_img, position, garbage, capacity)
@@ -121,7 +135,14 @@ while running:
                 source["capacity"]
             ).draw(screen)
         for sink in state["sinks"]:
-            object_factory.create_waste_sink(Point(*sink["location"])).draw(screen)
+            garbage_level = 0
+            if sink["garbagePackets"]:
+                garbage_level = sum(map(lambda it: it["totalMass"], sink["garbagePackets"]))
+            object_factory.create_waste_sink(
+                Point(*sink["location"]),
+                garbage_level,
+                sink["capacity"]
+            ).draw(screen)
 
     # flip() the display to put your work on screen
     pygame.display.flip()
