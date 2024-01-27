@@ -1,4 +1,10 @@
 import requests
+import argparse
+
+
+parser = argparse.ArgumentParser("complex")
+parser.add_argument("collectors", type=int)
+args = parser.parse_args()
 
 
 API_URL = "http://localhost:8080"
@@ -22,7 +28,7 @@ def spawn_waste_source(x, y):
             "x": x,
             "y": y
         },
-        "capacity": 20
+        "capacity": 30
     })
     assert r.status_code == 201
 
@@ -58,7 +64,7 @@ spawn_waste_source(40, 5)
 spawn_waste_source(40, 10)
 spawn_waste_source(40, 15)
 spawn_waste_source(40, 20)
-spawn_collector(10, 15)
-spawn_collector(30, 15)
+for i in range(args.collectors):
+    spawn_collector(20, 10)
 spawn_waste_sink(10, 10)
 spawn_waste_sink(30, 10)
