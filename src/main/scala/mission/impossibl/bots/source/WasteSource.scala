@@ -44,7 +44,11 @@ object WasteSource {
           val garbageToCollect = maxAmount.min(state.garbage)
           collectorRef ! CollectGarbage(garbageToCollect)
           context.log.info("Passing {} garbage", garbageToCollect)
-          source(instance, state.copy(garbage = state.garbage - garbageToCollect, collectionTimeout = None))
+          val collectionTime = System.currentTimeMillis() - state.collectionStartTime
+          source(instance, state.copy(garbage = state.garbage - garbageToCollect,
+            collectionTimeout = None,
+            collectionStartTime = 0 ,
+            collectionTimes = state.collectionTimes :+ collectionTime))
 
         case GarbageCollectionInfo(collectorId, estimatedArrival) =>
           context.log.info("Collector {} will arrive in {}", collectorId, estimatedArrival)
@@ -60,8 +64,8 @@ object WasteSource {
           context.log.info("Waste Source got its Score")
           source(instance, state.copy(score = garbage_score))
         case Status(replyTo) =>
-          replyTo ! SourceStatus(instance.id, instance.capacity, instance.location, state.garbage, state.score, state.collectionTimeout.isDefined, state.auctionTimeout.isDefined)
-          Behaviors.same
+          replyTo ! SourceStatus(instance.id, instance.capacity, instance.location, state.garbage, state.score, state.collectionTimes, state.collectionTimeout.isDefined, state.auctionTimeout.isDefined)
+          source(instance, state.copy(collectionTimes = List.empty))
       }
     }
 
@@ -73,7 +77,7 @@ object WasteSource {
         context.self,
         state.garbage
       )
-      state.copy(auctionTimeout = Some(context.scheduleOnce(DisposalAuctionTimeout, context.self, AuctionTimeout())))
+      state.copy(auctionTimeout = Some(context.scheduleOnce(DisposalAuctionTimeout, context.self, AuctionTimeout())), collectionStartTime = System.currentTimeMillis())
     } else {
       state
     }

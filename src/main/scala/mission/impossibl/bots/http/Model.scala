@@ -34,6 +34,7 @@ final case class SourceStatus(
   location: (Int, Int),
   garbageLevel: Int,
   score: Int,
+  collectionTimes: List[Long],
   isWaitingForCollection: Boolean,
   isWaitingForAuctionResult: Boolean
 )
@@ -146,7 +147,7 @@ trait JsonSupport extends SprayJsonSupport with DefaultJsonProtocol {
   implicit val asf: RootJsonFormat[AuctionStatus]       = jsonFormat5(AuctionStatus.apply)
   implicit val osf: RootJsonFormat[OrchestratorStatus]  = jsonFormat2(OrchestratorStatus.apply)
   implicit val spef: RootJsonFormat[SourcePathElem]     = jsonFormat3(SourcePathElem.apply)
-  implicit val sosf: RootJsonFormat[SourceStatus]       = jsonFormat7(SourceStatus.apply)
+  implicit val sosf: RootJsonFormat[SourceStatus]       = jsonFormat8(SourceStatus.apply)
   implicit val gpf: RootJsonFormat[GarbagePacket]       = jsonFormat2(GarbagePacket.apply)
   implicit val gf: RootJsonFormat[Garbage]              = jsonFormat2(Garbage.apply)
   implicit val csf: RootJsonFormat[CollectorStatus]     = jsonFormat8(CollectorStatus.apply)

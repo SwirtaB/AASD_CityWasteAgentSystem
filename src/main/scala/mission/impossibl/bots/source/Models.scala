@@ -9,4 +9,10 @@ import scala.concurrent.duration.FiniteDuration
 
 final case class Instance(id: UUID, location: (Int, Int), capacity: Int, orchestrator: ActorRef[GarbageOrchestrator.Command])
 
-final case class State(garbage: Int = 0, score: Int = 0, estimatedCollectorArrival: Option[FiniteDuration] = None, auctionTimeout: Option[Cancellable] = None, collectionTimeout: Option[Cancellable] = None)
+final case class State(garbage: Int = 0,
+                       score: Int = 0,
+                       estimatedCollectorArrival: Option[FiniteDuration] = None,
+                       auctionTimeout: Option[Cancellable] = None,
+                       collectionTimeout: Option[Cancellable] = None,
+                       collectionStartTime: Long = 0,
+                       collectionTimes: List[Long] = List.empty)
