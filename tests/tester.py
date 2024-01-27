@@ -9,8 +9,8 @@ import matplotlib.pyplot as plt
 def kill(p: subprocess.Popen):
     os.killpg(os.getpgid(p.pid), signal.SIGTERM)
 
-timesteps = 60
-scenario = "simple"
+timesteps = 180
+scenario = "all2s"
 subprocess_params = {
     "shell": True,
     "stdout": subprocess.PIPE,
@@ -53,13 +53,21 @@ for state in states:
     avg_sink_total_reserved.append(avg_sink_tr)
 
 x = [i+1 for i in range(timesteps)]
-plt.plot(x, avg_source_garbage_levels, color="r", label="Average source garbage level")
-plt.plot(x, avg_collector_garbage_levels, color="b", label="Average collector garbage level")
-plt.plot(x, avg_sink_total_reserved, color="g", label="Average sink total reserved")
-plt.ylabel("Unit")
-plt.xlabel("Timestep")
+
+if scenario == "simple":
+    plt.title(f"Wartości średnie dla scenariusza prostego.")
+elif scenario == "all2s":
+    plt.title(f"Wartości średnie dla scenariusza wieloaktorowego.")
+else:
+    plt.title(f"Wartości średnie dla scenariusza rzeczywistego.")
+
+plt.plot(x, avg_source_garbage_levels, color="r", label="WasteSource")
+plt.plot(x, avg_collector_garbage_levels, color="b", label="GarbageCollector")
+plt.plot(x, avg_sink_total_reserved, color="g", label="WasteSink")
+plt.ylabel("średnia")
+plt.xlabel("czas [s]")
 plt.legend()
-plt.savefig("diagrams/test_avg.png")
+plt.savefig(f"diagrams/test_avg_{scenario}.png")
 
 kill(sim)
 kill(gui)
