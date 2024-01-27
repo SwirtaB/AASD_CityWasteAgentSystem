@@ -183,7 +183,7 @@ object GarbageOrchestrator {
       context.log.info("[Disposal] Winning offer for auction {} from {}", auction.auctionId, sorted.head.wasteSink)
       val winningOffer = auction.received.head
       winningOffer.wasteSink ! GarbageDisposalAccepted(auction.auctionId)
-      auction.collectorRef ! DisposalAuctionResponse(DisposalPoint(winningOffer.location, winningOffer.wasteSink))
+      auction.collectorRef ! DisposalAuctionResponse(DisposalPoint(winningOffer.location, winningOffer.wasteSink, auction.auctionId))
       context.log.info("[Disposal] Rejecting offers for auction {} from {}", auction.auctionId, sorted.drop(1).map(_.wasteSink))
       sorted.drop(1).foreach(_.wasteSink ! GarbageDisposalRejected(auction.auctionId))
     }

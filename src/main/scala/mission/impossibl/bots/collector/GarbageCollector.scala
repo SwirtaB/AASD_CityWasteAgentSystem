@@ -88,12 +88,12 @@ object GarbageCollector {
 
         case Move() =>
           state.disposalPoint match {
-            case Some(DisposalPoint(destination, sink)) =>
+            case Some(DisposalPoint(destination, sink, auctionId)) =>
               val loc = move(destination, state.currentLocation, instance.speed)
               if (loc == destination) {
                 context.log.info("At destination - sink at {}", destination)
                 val packets = state.visitedSources.map(g => GarbagePacketRecord(g.id, wasteMass = g.amount))
-                sink ! ReceiveGarbage(GarbagePacket(packets, packets.map(_.wasteMass).sum), instance.id)
+                sink ! ReceiveGarbage(GarbagePacket(packets, packets.map(_.wasteMass).sum), instance.id, auctionId)
                 context.log.info("Emptied")
                 collector(instance, state.copy(carriedGarbage = 0, visitedSources = List.empty, disposalPoint = None))
               } else {

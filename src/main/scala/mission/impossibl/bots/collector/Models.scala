@@ -22,7 +22,8 @@ final case class State(
 )
 final case class DisposalPoint(
   location: (Int, Int),
-  ref: ActorRef[WasteSink.Command]
+  ref: ActorRef[WasteSink.Command],
+  auctionId: UUID
 )
 
 final case class Garbage(

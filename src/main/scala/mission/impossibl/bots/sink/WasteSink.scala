@@ -58,13 +58,15 @@ object WasteSink {
           val reservations = state.reservedSpace.filterNot(_.auctionId == auctionId) // drop reservation from rejected auction
           sink(instance, state.copy(reservedSpace = reservations))
 
-        case ReceiveGarbage(packet, collectorId) => // updates state on garbage receive
+        case ReceiveGarbage(packet, collectorId, auctionId) => // updates state on garbage receive
           context.log.info(
             "Received {} kg of garbage from {}.",
             packet.totalMass,
             collectorId
           )
-          sink(instance, state.copy(garbagePackets = state.garbagePackets.appended(packet)))
+          // drop reservations on garbage receival
+          val reservations = state.reservedSpace.filterNot(_.auctionId == auctionId)
+          sink(instance, state.copy(garbagePackets = state.garbagePackets.appended(packet), reservedSpace = reservations))
 
         case ProcessGarbage() => // simulates garbage processing
           state.garbagePackets.headOption match {
@@ -110,7 +112,7 @@ object WasteSink {
 
   sealed trait Command
 
-  final case class ReceiveGarbage(packet: GarbagePacket, collectorId: UUID) extends Command
+  final case class ReceiveGarbage(packet: GarbagePacket, collectorId: UUID, auctionId: UUID) extends Command
 
   final case class ProcessGarbage() extends Command
 
